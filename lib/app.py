@@ -12,8 +12,15 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # -------------------------
 # TESSERACT CONFIGURATION
 # -------------------------
-if shutil.which("tesseract"):
-    print("Tesseract found in system PATH.")
+tesseract_path = shutil.which("tesseract")
+
+# If not found in PATH, check common Linux/Docker paths explicitly
+if not tesseract_path and os.path.exists("/usr/bin/tesseract"):
+    tesseract_path = "/usr/bin/tesseract"
+
+if tesseract_path:
+    pytesseract.pytesseract.tesseract_cmd = tesseract_path
+    print(f"Tesseract found at: {tesseract_path}")
 else:
     print("WARNING: Tesseract not found. OCR may fail.")
 
