@@ -91,6 +91,11 @@ def file_translate():
         elif file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
             image = Image.open(file)
             image = ImageOps.exif_transpose(image)
+
+            # Resize image if it is too large to prevent memory crashes (OOM)
+            if image.width > 1500 or image.height > 1500:
+                image.thumbnail((1500, 1500))
+
             image = ImageOps.grayscale(image)
             image = ImageEnhance.Contrast(image).enhance(2.0)
             # Use multiple languages for OCR (English + Indian languages)
