@@ -1,0 +1,12 @@
+.git
+.dart_tool
+.idea
+build
+android
+ios
+linux
+macos
+windows
+test
+*.iml
+__pycache__
