@@ -14,9 +14,18 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # -------------------------
 tesseract_path = shutil.which("tesseract")
 
-# If not found in PATH, check common Linux/Docker paths explicitly
-if not tesseract_path and os.path.exists("/usr/bin/tesseract"):
-    tesseract_path = "/usr/bin/tesseract"
+if not tesseract_path:
+    # Check common paths for Docker (Linux) and Windows
+    possible_paths = [
+      
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",           # Windows 64-bit
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",     # Windows 32-bit
+
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            tesseract_path = path
+            break
 
 if tesseract_path:
     pytesseract.pytesseract.tesseract_cmd = tesseract_path
