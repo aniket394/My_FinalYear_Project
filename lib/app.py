@@ -99,6 +99,7 @@ def file_translate():
             return jsonify({"error": "Unsupported file type"}), 400
 
         if not text_content.strip():
+            print("OCR Failed: No text extracted from image.")
             return jsonify({"error": "No text extracted"}), 400
 
         translated_text = GoogleTranslator(source="auto", target=target_lang).translate(text_content)

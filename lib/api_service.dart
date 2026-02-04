@@ -20,7 +20,12 @@ class ApiService {
         final data = jsonDecode(response.body);
         return data['translated_text'] ?? "";
       } else {
-        return "Error: Server returned ${response.statusCode}";
+        try {
+          final body = jsonDecode(response.body);
+          return body['error'] ?? "Error: Server returned ${response.statusCode}";
+        } catch (e) {
+          return "Error: Server returned ${response.statusCode}";
+        }
       }
     } catch (e) {
       return "Error: Connection failed. $e";
@@ -45,7 +50,12 @@ class ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        return {"error": "Server error: ${response.statusCode}"};
+        try {
+          final body = jsonDecode(response.body);
+          return {"error": body['error'] ?? "Server error: ${response.statusCode}"};
+        } catch (e) {
+          return {"error": "Server error: ${response.statusCode}"};
+        }
       }
     } catch (e) {
       return {"error": "Connection error: $e"};
