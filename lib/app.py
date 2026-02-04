@@ -96,16 +96,43 @@ def file_translate():
             if image.width > 1500 or image.height > 1500:
                 image.thumbnail((1500, 1500))
 
+            # Keep a copy of the original for fallback
+            original_image = image.copy()
+
+            # Preprocessing
             image = ImageOps.grayscale(image)
             image = ImageEnhance.Contrast(image).enhance(2.0)
-            # Use multiple languages for OCR (English + Indian languages)
-            text_content = pytesseract.image_to_string(image, lang='eng+hin+mar+ben+guj+tam+tel+kan+mal+pan')
+            
+            # Attempt 1: Multi-language OCR with preprocessing
+            try:
+                text_content = pytesseract.image_to_string(image, lang='eng+hin+mar+ben+guj+tam+tel+kan+mal+pan')
+            except Exception as e:
+                print(f"OCR Attempt 1 failed: {e}")
+                text_content = ""
+
+            # Attempt 2: Fallback to English only (if multi-lang fails)
+            if not text_content.strip():
+                print("OCR Attempt 1 empty. Retrying with English...")
+                try:
+                    text_content = pytesseract.image_to_string(image, lang='eng')
+                except:
+                    pass
+
+            # Attempt 3: Fallback to original image (no preprocessing)
+            if not text_content.strip():
+                print("OCR Attempt 2 empty. Retrying with original image...")
+                try:
+                    text_content = pytesseract.image_to_string(original_image, lang='eng')
+                except:
+                    pass
 
         else:
             return jsonify({"error": "Unsupported file type"}), 400
 
         if not text_content.strip():
             print("OCR Failed: No text extracted from image.")
+            if file.filename.lower().endswith(".pdf"):
+                return jsonify({"error": "No text found in PDF. Scanned PDFs are not supported."}), 400
             return jsonify({"error": "No text extracted"}), 400
 
         translated_text = GoogleTranslator(source="auto", target=target_lang).translate(text_content)
