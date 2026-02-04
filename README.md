@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # final_year
 
 A new Flutter project.
@@ -14,3 +15,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# My_FinalYear_Project
+>>>>>>> c936a23b7d54fd1e1cf4b71c268d5beecc589a0b
