@@ -980,7 +980,7 @@ class _FilesScreenState extends State<FilesScreen> {
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['txt', 'pdf'],
+      allowedExtensions: ['txt', 'pdf', 'docx'],
     );
     if (result == null || !mounted) return;
 

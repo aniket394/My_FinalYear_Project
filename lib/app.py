@@ -73,22 +73,24 @@ def file_translate():
         file = request.files["file"]
         target_lang = request.form.get("target_lang", "hi")
         text_content = ""
+        filename = file.filename.lower() if file.filename else ""
+        print(f"Processing file: {filename}, Content-Type: {file.content_type}")
 
-        if file.filename.lower().endswith(".txt"):
+        if filename.endswith(".txt") or file.content_type == "text/plain":
             text_content = file.read().decode("utf-8")
 
-        elif file.filename.lower().endswith(".docx"):
+        elif filename.endswith(".docx") or "wordprocessingml" in file.content_type:
             doc = docx.Document(file)
             text_content = "\n".join([para.text for para in doc.paragraphs])
 
-        elif file.filename.lower().endswith(".pdf"):
+        elif filename.endswith(".pdf") or file.content_type == "application/pdf":
             pdf_reader = PyPDF2.PdfReader(file)
             for page in pdf_reader.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text_content += page_text + "\n"
 
-        elif file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
+        elif filename.endswith((".png", ".jpg", ".jpeg", ".webp")) or file.content_type.startswith("image/"):
             image = Image.open(file)
             image = ImageOps.exif_transpose(image)
 
@@ -131,11 +133,11 @@ def file_translate():
                     pass
 
         else:
-            return jsonify({"error": "Unsupported file type"}), 400
+            return jsonify({"error": f"Unsupported file type: {filename}"}), 400
 
         if not text_content.strip():
             print("OCR Failed: No text extracted from image.")
-            if file.filename.lower().endswith(".pdf"):
+            if filename.endswith(".pdf"):
                 return jsonify({"error": "No text found in PDF. Scanned PDFs are not supported."}), 400
             return jsonify({"error": "No text extracted"}), 400
 
