@@ -4,25 +4,18 @@ FROM python:3.10-slim
 # Install system dependencies (Tesseract OCR)
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
-    libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Copy the requirements file into the container
+# Copy requirements and install dependencies
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code
-# We copy app.py from the lib folder to the root of the container app
-COPY lib/app.py .
+# Copy the rest of the application
+COPY . .
 
-# Expose the port the app runs on
-EXPOSE 5000
-
-# Run the application using Gunicorn
-# "app:app" means: look in module "app" (app.py) for the variable "app" (Flask instance)
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+# Run the application using Gunicorn, binding to the PORT environment variable
+# We use --chdir lib because your app.py is inside the lib/ folder
+CMD gunicorn --chdir lib --bind 0.0.0.0:${PORT:-5000} app:app

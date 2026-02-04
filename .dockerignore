@@ -1,18 +1,12 @@
-# Ignore Git files
 .git
-.gitignore
-
-# Ignore Flutter build artifacts and tools
-.dart_tool/
-build/
-
-# Ignore Flutter platform folders (not needed for Python backend)
-android/
-ios/
-windows/
-linux/
-web/
-macos/
-
-# Ignore uploads folder
-uploads/
+.dart_tool
+.idea
+build
+android
+ios
+linux
+macos
+windows
+test
+*.iml
+__pycache__
