@@ -104,8 +104,10 @@ def file_translate():
             image = ImageEnhance.Contrast(image).enhance(2.0)
             
             # Attempt 1: Multi-language OCR with preprocessing
+            # --psm 6: Assume a single uniform block of text (better for camera photos)
+            custom_config = r'--oem 3 --psm 6'
             try:
-                text_content = pytesseract.image_to_string(image, lang='eng+hin+mar+ben+guj+tam+tel+kan+mal+pan')
+                text_content = pytesseract.image_to_string(image, lang='eng+hin+mar+ben+guj+tam+tel+kan+mal+pan', config=custom_config)
             except Exception as e:
                 print(f"OCR Attempt 1 failed: {e}")
                 text_content = ""
@@ -114,7 +116,7 @@ def file_translate():
             if not text_content.strip():
                 print("OCR Attempt 1 empty. Retrying with English...")
                 try:
-                    text_content = pytesseract.image_to_string(image, lang='eng')
+                    text_content = pytesseract.image_to_string(image, lang='eng', config=custom_config)
                 except:
                     pass
 
@@ -122,7 +124,17 @@ def file_translate():
             if not text_content.strip():
                 print("OCR Attempt 2 empty. Retrying with original image...")
                 try:
-                    text_content = pytesseract.image_to_string(original_image, lang='eng')
+                    text_content = pytesseract.image_to_string(original_image, lang='eng+hin+mar', config=custom_config)
+                except:
+                    pass
+
+            # Attempt 4: Fallback with Thresholding (Black & White)
+            if not text_content.strip():
+                print("OCR Attempt 3 empty. Retrying with thresholding...")
+                try:
+                    # Convert to binary (black and white)
+                    thresh = image.point(lambda p: 255 if p > 128 else 0)
+                    text_content = pytesseract.image_to_string(thresh, lang='eng+hin', config=custom_config)
                 except:
                     pass
 
