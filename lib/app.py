@@ -93,7 +93,8 @@ def file_translate():
             image = ImageOps.exif_transpose(image)
             image = ImageOps.grayscale(image)
             image = ImageEnhance.Contrast(image).enhance(2.0)
-            text_content = pytesseract.image_to_string(image)
+            # Use multiple languages for OCR (English + Indian languages)
+            text_content = pytesseract.image_to_string(image, lang='eng+hin+mar+ben+guj+tam+tel+kan+mal+pan')
 
         else:
             return jsonify({"error": "Unsupported file type"}), 400
