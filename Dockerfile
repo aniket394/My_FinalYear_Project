@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
+# Suppress the warning about running pip as root
+ENV PIP_ROOT_USER_ACTION=ignore
+
 # Install system dependencies (Tesseract OCR)
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
