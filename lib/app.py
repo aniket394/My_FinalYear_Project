@@ -65,6 +65,13 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # -------------------------
+# ROOT ROUTE (Fixes 404 on homepage)
+# -------------------------
+@app.route("/")
+def home():
+    return "Backend is running!", 200
+
+# -------------------------
 # PING (Keep server awake)
 # -------------------------
 @app.route("/ping")
