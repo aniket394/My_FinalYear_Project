@@ -13,10 +13,20 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # -------------------------
 # TESSERACT CONFIGURATION
 # -------------------------
-tesseract_path = shutil.which("tesseract")
+# --- MANUAL OVERRIDE FOR WINDOWS ---
+# If Tesseract is still not found after reinstalling, uncomment the line below.
+tesseract_path_manual = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# tesseract_path_manual = None # Keep this as None if auto-detection works.
+
+# Only use the manual path if it actually exists (prevents breaking Linux/Render)
+if tesseract_path_manual and not os.path.exists(tesseract_path_manual):
+    tesseract_path_manual = None
+
+# --- AUTO-DETECTION ---
+tesseract_path = tesseract_path_manual or shutil.which("tesseract")
 
 if not tesseract_path:
-    # Check common paths for Docker (Linux) and Windows
+    # Fallback to check common paths for Docker (Linux) and Windows
     possible_paths = [
         "/usr/bin/tesseract",                                      # Linux (Standard)
         "/usr/local/bin/tesseract",                                # Linux (Alternative)
