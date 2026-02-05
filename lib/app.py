@@ -93,7 +93,17 @@ def home():
 # -------------------------
 @app.route("/ping")
 def ping():
-    return "OK", 200
+    status = {"service": "running", "translation_check": "pending"}
+    try:
+        # Test a simple translation (Hello -> Spanish) to verify external API connectivity
+        test_trans = GoogleTranslator(source='auto', target='es').translate("Hello")
+        status["translation_check"] = "success"
+        status["test_result"] = test_trans
+    except Exception as e:
+        status["translation_check"] = "failed"
+        status["error"] = str(e)
+    
+    return jsonify(status), 200
 
 # -------------------------
 # CACHED TRANSLATION HELPER
