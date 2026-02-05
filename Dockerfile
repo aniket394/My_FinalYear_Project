@@ -4,7 +4,6 @@ FROM python:3.10-slim
 # Install system dependencies (Tesseract OCR)
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
-    tesseract-ocr-all \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory

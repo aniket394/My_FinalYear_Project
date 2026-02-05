@@ -5,6 +5,7 @@ from deep_translator import GoogleTranslator
 import os, docx, PyPDF2
 from PIL import Image, ImageOps, ImageEnhance
 import pytesseract, shutil
+from functools import lru_cache
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -71,19 +72,33 @@ def ping():
     return "OK", 200
 
 # -------------------------
+# CACHED TRANSLATION HELPER
+# -------------------------
+# Caches the last 500 translations to speed up repeated requests
+@lru_cache(maxsize=500)
+def get_cached_translation(text, target_lang):
+    return GoogleTranslator(source="auto", target=target_lang).translate(text)
+
+# -------------------------
 # FILE TRANSLATE
 # -------------------------
 @app.route("/file_translate", methods=["POST"])
 def file_translate():
     try:
         if "file" not in request.files:
+            print("Error: No file part in request")
             return jsonify({"error": "No file found"}), 400
 
         file = request.files["file"]
+        if file.filename == '':
+            print("Error: No selected file")
+            return jsonify({"error": "No selected file"}), 400
+
         target_lang = request.form.get("target_lang", "hi")
         text_content = ""
         filename = file.filename.lower() if file.filename else ""
         print(f"Processing file: {filename}, Content-Type: {file.content_type}")
+        print(f"Target Language: {target_lang}")
 
         if filename.endswith(".txt") or file.content_type == "text/plain":
             text_content = file.read().decode("utf-8")
@@ -142,6 +157,7 @@ def file_translate():
                     pass
 
         else:
+            print(f"Error: Unsupported file type: {filename}")
             return jsonify({"error": f"Unsupported file type: {filename}"}), 400
 
         if not text_content.strip():
@@ -150,7 +166,7 @@ def file_translate():
                 return jsonify({"error": "No text found in PDF. Scanned PDFs are not supported."}), 400
             return jsonify({"error": "No text extracted"}), 400
 
-        translated_text = GoogleTranslator(source="auto", target=target_lang).translate(text_content)
+        translated_text = get_cached_translation(text_content, target_lang)
         return jsonify({"original_text": text_content, "translated_text": translated_text})
 
     except Exception as e:
@@ -162,16 +178,22 @@ def file_translate():
 @app.route("/translate", methods=["POST"])
 def translate_text():
     try:
-        data = request.get_json(force=True)
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            print("Error: Invalid JSON or empty body")
+            return jsonify({"error": "Invalid JSON or empty body"}), 400
+
         text = data.get("text", "").strip()
         target_lang = data.get("target_lang", "hi")
 
         if not text:
+            print("Error: Text is required but missing")
             return jsonify({"error": "Text is required"}), 400
         if target_lang not in lang_codes.values():
+            print(f"Error: Unsupported target language '{target_lang}'")
             return jsonify({"error": f"Target language '{target_lang}' not supported"}), 400
 
-        translated_text = GoogleTranslator(source="auto", target=target_lang).translate(text)
+        translated_text = get_cached_translation(text, target_lang)
         return jsonify({"translated_text": translated_text})
 
     except Exception as e:
