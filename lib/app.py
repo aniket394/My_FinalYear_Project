@@ -18,6 +18,8 @@ tesseract_path = shutil.which("tesseract")
 if not tesseract_path:
     # Check common paths for Docker (Linux) and Windows
     possible_paths = [
+        "/usr/bin/tesseract",                                      # Linux (Standard)
+        "/usr/local/bin/tesseract",                                # Linux (Alternative)
       
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",           # Windows 64-bit
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",     # Windows 32-bit
