@@ -26,7 +26,9 @@ if not tesseract_path:
 
     ]
     for path in possible_paths:
-        if os.path.exists(path):
+        exists = os.path.exists(path)
+        print(f"Checking path: {path} -> {'Found' if exists else 'Not Found'}")
+        if exists:
             tesseract_path = path
             break
 
@@ -142,7 +144,8 @@ def file_translate():
             # --psm 6: Assume a single uniform block of text (better for camera photos)
             custom_config = r'--oem 3 --psm 6'
             try:
-                text_content = pytesseract.image_to_string(image, lang='eng', config=custom_config)
+                # Try to read both English and Hindi text (Great for Indian context)
+                text_content = pytesseract.image_to_string(image, lang='eng+hin', config=custom_config)
             except Exception as e:
                 print(f"OCR Attempt 1 failed: {e}")
                 text_content = ""
