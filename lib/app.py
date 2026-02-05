@@ -30,11 +30,14 @@ if not tesseract_path:
     possible_paths = [
         "/usr/bin/tesseract",                                      # Linux (Standard)
         "/usr/local/bin/tesseract",                                # Linux (Alternative)
-      
-        r"C:\Program Files\Tesseract-OCR\tesseract.exe",           # Windows 64-bit
-        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",     # Windows 32-bit
-
     ]
+
+    if os.name == 'nt': # Windows only checks
+        possible_paths.extend([
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        ])
+
     for path in possible_paths:
         exists = os.path.exists(path)
         print(f"Checking path: {path} -> {'Found' if exists else 'Not Found'}")
@@ -83,7 +86,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # -------------------------
 @app.route("/")
 def home():
-    return "Backend is running!", 200
+    return "", 200
 
 # -------------------------
 # PING (Keep server awake)
