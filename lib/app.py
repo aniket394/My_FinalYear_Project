@@ -15,8 +15,8 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # -------------------------
 # --- MANUAL OVERRIDE FOR WINDOWS ---
 # If Tesseract is still not found after reinstalling, uncomment the line below.
-tesseract_path_manual = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-# tesseract_path_manual = None # Keep this as None if auto-detection works.
+# tesseract_path_manual = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+tesseract_path_manual = None # Keep this as None if auto-detection works.
 
 # Only use the manual path if it actually exists (prevents breaking Linux/Render)
 if tesseract_path_manual and not os.path.exists(tesseract_path_manual):
