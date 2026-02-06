@@ -153,15 +153,17 @@ def file_translate():
             image = ImageOps.exif_transpose(image)
 
             # Resize image if it is too large to prevent memory crashes (OOM)
-            if image.width > 1024 or image.height > 1024:
-                image.thumbnail((1024, 1024))
-
-            # Keep a copy of the original for fallback
-            original_image = image.copy()
+            # 800px is sufficient for OCR and much faster to process
+            if image.width > 800 or image.height > 800:
+                image.thumbnail((800, 800))
 
             # Preprocessing
-            image = ImageOps.grayscale(image)
-            image = ImageEnhance.Contrast(image).enhance(2.0)
+            # Convert to grayscale
+            image = image.convert('L')
+            # Autocontrast helps with low light/low quality images
+            image = ImageOps.autocontrast(image)
+            # Sharpening helps extract text from blurry low-quality images
+            image = ImageEnhance.Sharpness(image).enhance(1.5)
             
             # Attempt 1: English OCR with preprocessing (Reduced memory usage)
             # --psm 6: Assume a single uniform block of text (better for camera photos)
@@ -173,15 +175,8 @@ def file_translate():
                 print(f"OCR Attempt 1 failed: {e}")
                 text_content = ""
 
-            # Attempt 2: Fallback to original image (English only)
-            if not text_content.strip():
-                print("OCR Attempt 1 empty. Retrying with original image...")
-                try:
-                    text_content = pytesseract.image_to_string(original_image, lang='eng', config=custom_config)
-                except:
-                    pass
-
-            # Attempt 3: Fallback with Thresholding (Black & White) - English only
+            # Attempt 2: Fallback with Thresholding (Black & White) - English only
+            # This is very fast and often fixes noisy backgrounds
             if not text_content.strip():
                 print("OCR Attempt 2 empty. Retrying with thresholding...")
                 try:

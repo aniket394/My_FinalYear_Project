@@ -756,9 +756,9 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
     try {
       final XFile? img = await picker.pickImage(
         source: source,
-        maxWidth: 1024, // Limit width to speed up upload & OCR
-        maxHeight: 1024,
-        imageQuality: 70, // Compress image quality
+        maxWidth: 800, // Reduced to 800 for faster OCR processing
+        maxHeight: 800,
+        imageQuality: 60, // Reduced quality for faster upload (text is still clear)
       );
       if (img == null || !mounted) return;
 
