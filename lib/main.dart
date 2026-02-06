@@ -8,7 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:final_year/api_service.dart';
+import 'package:translango/translate_service.dart';
 
 /// ===================== UI THEME =====================
 const Color kBgColor = Color(0xFFF5F7FA);
@@ -102,6 +102,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'TransLango',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
       theme: ThemeData(
@@ -177,6 +178,7 @@ class TextTranslatorScreen extends StatefulWidget {
 }
 
 class _TextTranslatorScreenState extends State<TextTranslatorScreen> {
+  final service = TranslatorService();
   final TextEditingController _controller = TextEditingController();
   String output = "";
   bool loading = false;
@@ -191,7 +193,7 @@ class _TextTranslatorScreenState extends State<TextTranslatorScreen> {
     }
     FocusScope.of(context).unfocus();
     setState(() => loading = true);
-    final translation = await ApiService.translateText(_controller.text, toLang);
+    final translation = await service.translateText(_controller.text, toLang);
     if (mounted) setState(() { output = translation; loading = false; });
   }
 
@@ -486,6 +488,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
   double soundLevel = 0.0;
   Timer? _debounce;
   String toLang = "hi";
+  final service = TranslatorService();
 
   @override
   void initState() {
@@ -525,7 +528,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
         _debounce = Timer(const Duration(milliseconds: 500), () async {
           if (text.trim().isEmpty) return;
           if (mounted) setState(() => loading = true);
-          final tr = await ApiService.translateText(text, toLang);
+          final tr = await service.translateText(text, toLang);
           if (mounted) setState(() { translated = tr; loading = false; });
         });
       },
@@ -547,7 +550,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
   Future<void> _reTranslate() async {
     if (text.trim().isEmpty) return;
     setState(() => loading = true);
-    final tr = await ApiService.translateText(text, toLang);
+    final tr = await service.translateText(text, toLang);
     if (mounted) setState(() { translated = tr; loading = false; });
   }
 
@@ -747,6 +750,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
   bool loading = false;
   String toLang = "hi";
   final picker = ImagePicker();
+  final service = TranslatorService();
 
   Future<void> getImage(ImageSource source) async {
     try {
@@ -765,13 +769,13 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
         translated = "";
       });
 
-      final result = await ApiService.translateFile(image!, toLang);
+      final result = await service.translateFile(image!, toLang);
       if (result.containsKey("error")) {
-        extracted = result["error"]!;
+        extracted = result["error"]!.toString();
         translated = "";
       } else {
-        extracted = result["original_text"] ?? "No text extracted.";
-        translated = result["translated_text"] ?? "";
+        extracted = (result["original_text"] ?? "No text extracted.").toString();
+        translated = (result["translated_text"] ?? "").toString();
       }
     } catch (e) {
       extracted = "Error processing file: $e";
@@ -783,7 +787,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
   Future<void> _reTranslate() async {
     if (extracted.trim().isEmpty) return;
     setState(() => loading = true);
-    final tr = await ApiService.translateText(extracted, toLang);
+    final tr = await service.translateText(extracted, toLang);
     if (mounted) setState(() { translated = tr; loading = false; });
   }
 
@@ -991,6 +995,7 @@ class _FilesScreenState extends State<FilesScreen> {
   String? fileName;
   bool loading = false;
   String toLang = "hi";
+  final service = TranslatorService();
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -1006,13 +1011,13 @@ class _FilesScreenState extends State<FilesScreen> {
 
     try {
       final file = File(result.files.single.path!);
-      final response = await ApiService.translateFile(file, toLang);
+      final response = await service.translateFile(file, toLang);
       if (response.containsKey("error")) {
-        extracted = response["error"]!;
+        extracted = response["error"]!.toString();
         translated = "";
       } else {
-        extracted = response["original_text"] ?? "No text extracted.";
-        translated = response["translated_text"] ?? "";
+        extracted = (response["original_text"] ?? "No text extracted.").toString();
+        translated = (response["translated_text"] ?? "").toString();
       }
     } catch (e) {
       extracted = "Error processing file: $e";
@@ -1024,7 +1029,7 @@ class _FilesScreenState extends State<FilesScreen> {
   Future<void> _reTranslate() async {
     if (extracted.trim().isEmpty) return;
     setState(() => loading = true);
-    final tr = await ApiService.translateText(extracted, toLang);
+    final tr = await service.translateText(extracted, toLang);
     if (mounted) setState(() { translated = tr; loading = false; });
   }
 
