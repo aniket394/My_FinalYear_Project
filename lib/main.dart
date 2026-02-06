@@ -212,248 +212,258 @@ class _TextTranslatorScreenState extends State<TextTranslatorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          const Text("Text Translator",
-              style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: kTextPrimary)),
-          const SizedBox(height: 20),
-
-          // Language selection row
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      menuMaxHeight: 300,
-                      value: fromLang,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                          color: kTextSecondary),
-                      items: kLanguages.entries
-                          .map((e) => DropdownMenuItem(
-                                value: e.value["code"],
-                                child: Text(
-                                  "${e.value["flag"]} ${e.key}",
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: kTextPrimary),
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (val) => setState(() => fromLang = val!),
-                    ),
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: kBgColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    onPressed: swapLanguages,
-                    icon: const Icon(Icons.swap_horiz_rounded,
-                        color: kPrimaryColor),
-                  ),
-                ),
-                Expanded(
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      menuMaxHeight: 300,
-                      value: toLang,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                          color: kTextSecondary),
-                      items: kLanguages.entries
-                          .map((e) => DropdownMenuItem(
-                                value: e.value["code"],
-                                child: Text(
-                                  "${e.value["flag"]} ${e.key}",
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: kTextPrimary),
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (val) => setState(() => toLang = val!),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Input Card
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: kCardColor,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("ORIGINAL TEXT",
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: kSecondaryColor)),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20, color: kTextSecondary),
-                        onPressed: () => _controller.clear(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      maxLines: null,
-                      expands: true,
-                      textAlignVertical: TextAlignVertical.top,
-                      style: const TextStyle(fontSize: 16, color: kTextPrimary),
-                      decoration: const InputDecoration(
-                        hintText: "Write text to translate...",
-                        hintStyle: TextStyle(color: kTextSecondary),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Translate Button
-          SizedBox(
-            width: double.infinity,
-            height: 55,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: kGradient,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: kPrimaryColor.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: ElevatedButton(
-                onPressed: translate,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18)),
-                ),
-                child: const Text("Translate",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          if (loading) ...[
-            const LinearProgressIndicator(color: kPrimaryColor),
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            const Text("Text Translator",
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: kTextPrimary)),
             const SizedBox(height: 20),
-          ],
 
-          // Output Card
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(20),
+            // Language selection row
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: kCardColor,
-                borderRadius: BorderRadius.circular(24),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("TRANSLATED TEXT",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              color: kPrimaryColor)),
-                      IconButton(
-                        icon: const Icon(Icons.copy_rounded, size: 20, color: kPrimaryColor),
-                        onPressed: () {
-                          if (output.isEmpty) return;
-                          Clipboard.setData(ClipboardData(text: output));
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Copied!"), duration: Duration(seconds: 1)));
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
                   Expanded(
-                    child: SingleChildScrollView(
-                      child: Text(
-                        output.isEmpty
-                            ? "Translation will appear here"
-                            : output,
-                        style: TextStyle(
-                            fontSize: 18,
-                            color: output.isEmpty
-                                ? kTextSecondary
-                                : kTextPrimary,
-                            height: 1.5),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                        value: fromLang,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: kTextSecondary),
+                        items: kLanguages.entries
+                            .map((e) => DropdownMenuItem(
+                                  value: e.value["code"],
+                                  child: Text(
+                                    "${e.value["flag"]} ${e.key}",
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: kTextPrimary),
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (val) => setState(() => fromLang = val!),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: kBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: swapLanguages,
+                      icon: const Icon(Icons.swap_horiz_rounded,
+                          color: kPrimaryColor),
+                    ),
+                  ),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                        value: toLang,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            color: kTextSecondary),
+                        items: kLanguages.entries
+                            .map((e) => DropdownMenuItem(
+                                  value: e.value["code"],
+                                  child: Text(
+                                    "${e.value["flag"]} ${e.key}",
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: kTextPrimary),
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (val) => setState(() => toLang = val!),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 20),
+
+            // Input Card
+            SizedBox(
+              height: 250,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: kCardColor,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("ORIGINAL TEXT",
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: kSecondaryColor)),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded,
+                              size: 20, color: kTextSecondary),
+                          onPressed: () => _controller.clear(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        maxLines: null,
+                        expands: true,
+                        textAlignVertical: TextAlignVertical.top,
+                        style: const TextStyle(fontSize: 16, color: kTextPrimary),
+                        decoration: const InputDecoration(
+                          hintText: "Write text to translate...",
+                          hintStyle: TextStyle(color: kTextSecondary),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Translate Button
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: kGradient,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: kPrimaryColor.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: translate,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18)),
+                  ),
+                  child: const Text("Translate",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            if (loading) ...[
+              const LinearProgressIndicator(color: kPrimaryColor),
+              const SizedBox(height: 20),
+            ],
+
+            // Output Card
+            SizedBox(
+              height: 250,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: kCardColor,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("TRANSLATED TEXT",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: kPrimaryColor)),
+                        IconButton(
+                          icon: const Icon(Icons.copy_rounded,
+                              size: 20, color: kPrimaryColor),
+                          onPressed: () {
+                            if (output.isEmpty) return;
+                            Clipboard.setData(ClipboardData(text: output));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text("Copied!"),
+                                    duration: Duration(seconds: 1)));
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Text(
+                          output.isEmpty
+                              ? "Translation will appear here"
+                              : output,
+                          style: TextStyle(
+                              fontSize: 18,
+                              color: output.isEmpty
+                                  ? kTextSecondary
+                                  : kTextPrimary,
+                              height: 1.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
