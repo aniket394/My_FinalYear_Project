@@ -153,8 +153,8 @@ def file_translate():
             image = ImageOps.exif_transpose(image)
 
             # Resize image if it is too large to prevent memory crashes (OOM)
-            if image.width > 1500 or image.height > 1500:
-                image.thumbnail((1500, 1500))
+            if image.width > 1024 or image.height > 1024:
+                image.thumbnail((1024, 1024))
 
             # Keep a copy of the original for fallback
             original_image = image.copy()

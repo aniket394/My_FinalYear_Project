@@ -750,7 +750,12 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
 
   Future<void> getImage(ImageSource source) async {
     try {
-      final XFile? img = await picker.pickImage(source: source);
+      final XFile? img = await picker.pickImage(
+        source: source,
+        maxWidth: 1024, // Limit width to speed up upload & OCR
+        maxHeight: 1024,
+        imageQuality: 70, // Compress image quality
+      );
       if (img == null || !mounted) return;
 
       setState(() {
