@@ -9,7 +9,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:translango/translate_service.dart';
-import 'splash_screen.dart';
 
 /// ===================== UI THEME =====================
 const Color kBgColor = Color(0xFFF5F7FA);
@@ -110,7 +109,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: kBgColor,
         fontFamily: 'Roboto',
       ),
-      home: const SplashScreen(nextScreen: TranslatorHome()),
+      home: const TranslatorHome(),
     );
   }
 }
