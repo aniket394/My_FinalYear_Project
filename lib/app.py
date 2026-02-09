@@ -112,7 +112,19 @@ TESS_LANG_MAP = {
     "ky": "kir", "ku": "kmr", "la": "lat", "lb": "ltz", "lt": "lit", "lv": "lav",
     "mk": "mkd", "mn": "mon", "mt": "mlt", "ps": "pus", "sk": "slk", "sl": "slv",
     "sq": "sqi", "sr": "srp", "su": "sun", "tg": "tgk", "uz": "uzb", "yi": "yid",
-    "yo": "yor"
+    "yo": "yor",
+
+    # Missing Indian Languages Mapped to Scripts
+    "mai": "hin", # Maithili -> Hindi (Devanagari)
+    "sat": "sat", # Santali
+    "ks": "urd",  # Kashmiri -> Urdu (Perso-Arabic)
+    "gom": "mar", # Konkani -> Marathi (Devanagari)
+    "sd": "snd",  # Sindhi
+    "doi": "hin", # Dogri -> Hindi
+    "mni": "ben", # Manipuri -> Bengali Script
+    "brx": "hin", # Bodo -> Hindi
+    "sa": "san",  # Sanskrit
+    "bho": "hin"  # Bhojpuri -> Hindi
 }
 
 # -------------------------
@@ -194,13 +206,15 @@ def file_translate():
             image = ImageOps.exif_transpose(image)
 
             # Resize image if it is too large to prevent memory crashes (OOM)
-            # Increased to 1800px. 800px is too small for accurate non-English OCR.
-            if image.width > 1800 or image.height > 1800:
-                image.thumbnail((1800, 1800))
+            # Increased to 2500px for better accuracy on high-res camera images
+            if image.width > 2500 or image.height > 2500:
+                image.thumbnail((2500, 2500))
 
             # Preprocessing
             # Convert to grayscale
             image = image.convert('L')
+            # Increase contrast to make text pop against background
+            image = ImageEnhance.Contrast(image).enhance(2.0)
             # Autocontrast helps with low light/low quality images
             image = ImageOps.autocontrast(image)
             # Sharpening helps extract text from blurry low-quality images
