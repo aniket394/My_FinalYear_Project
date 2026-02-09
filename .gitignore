@@ -1,6 +1,8 @@
 # Miscellaneous
 *.class
 *.log
+tessdata/
+__pycache__/
 *.pyc
 *.swp
 .DS_Store
@@ -45,3 +47,4 @@ __pycache__/
 venv/
 env/
 .env
+.DS_Store

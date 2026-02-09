@@ -16,8 +16,9 @@ LANGS = [
     "uzb", "uzb_cyrl", "vie", "yid", "yor"
 ]
 
-# Using tessdata_fast for better speed and smaller size
-BASE_URL = "https://github.com/tesseract-ocr/tessdata_fast/raw/main/"
+# Using standard tessdata for better ACCURACY (fixes missing fonts/gibberish)
+# tessdata_fast is faster but less accurate.
+BASE_URL = "https://github.com/tesseract-ocr/tessdata/raw/main/"
 OUTPUT_DIR = "tessdata"
 
 def download_file(lang):
