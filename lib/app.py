@@ -48,6 +48,12 @@ if not tesseract_path:
 if tesseract_path:
     pytesseract.pytesseract.tesseract_cmd = tesseract_path
     print(f"Tesseract found at: {tesseract_path}")
+
+    # Check for local tessdata folder (downloaded by script)
+    local_tessdata = os.path.join(os.getcwd(), "tessdata")
+    if os.path.exists(local_tessdata):
+        os.environ["TESSDATA_PREFIX"] = local_tessdata
+        print(f"Using local tessdata from: {local_tessdata}")
 else:
     print("WARNING: Tesseract not found. OCR may fail.")
 
@@ -73,6 +79,17 @@ lang_codes = {
     "Malay": "ms", "Persian": "fa", "Filipino": "tl", "Finnish": "fi",
     "Danish": "da", "Norwegian": "no", "Swahili": "sw", "Afrikaans": "af",
     "Sinhala": "si", "Burmese": "my", "Khmer": "km", "Lao": "lo",
+    
+    # Extended Languages
+    "Amharic": "am", "Azerbaijani": "az", "Belarusian": "be", "Tibetan": "bo", "Bosnian": "bs",
+    "Bulgarian": "bg", "Catalan": "ca", "Cebuano": "ceb", "Corsican": "co", "Welsh": "cy",
+    "Esperanto": "eo", "Estonian": "et", "Basque": "eu", "Frisian": "fy", "Irish": "ga",
+    "Scots Gaelic": "gd", "Galician": "gl", "Haitian Creole": "ht", "Croatian": "hr",
+    "Armenian": "hy", "Icelandic": "is", "Javanese": "jw", "Georgian": "ka", "Kazakh": "kk",
+    "Kyrgyz": "ky", "Kurdish": "ku", "Latin": "la", "Luxembourgish": "lb", "Lithuanian": "lt",
+    "Latvian": "lv", "Macedonian": "mk", "Mongolian": "mn", "Maltese": "mt", "Pashto": "ps",
+    "Slovak": "sk", "Slovenian": "sl", "Albanian": "sq", "Serbian": "sr", "Sundanese": "su",
+    "Tajik": "tg", "Uzbek": "uz", "Yiddish": "yi", "Yoruba": "yo"
 }
 
 # Tesseract Language Mapping (ISO 639-1 -> Tesseract Code)
@@ -85,7 +102,17 @@ TESS_LANG_MAP = {
     "pl": "pol", "uk": "ukr", "ro": "ron", "el": "ell", "cs": "ces", "sv": "swe",
     "hu": "hun", "he": "heb", "ms": "msa", "fa": "fas", "tl": "tgl", "fi": "fin",
     "da": "dan", "no": "nor", "sw": "swa", "af": "afr", "si": "sin", "my": "mya",
-    "km": "khm", "lo": "lao"
+    "km": "khm", "lo": "lao",
+
+    # Extended Mapping
+    "am": "amh", "az": "aze", "be": "bel", "bo": "bod", "bs": "bos", "bg": "bul",
+    "ca": "cat", "ceb": "ceb", "co": "cos", "cy": "cym", "eo": "epo", "et": "est",
+    "eu": "eus", "fy": "fry", "ga": "gle", "gd": "gla", "gl": "glg", "ht": "hat",
+    "hr": "hrv", "hy": "hye", "is": "isl", "jw": "jav", "ka": "kat", "kk": "kaz",
+    "ky": "kir", "ku": "kmr", "la": "lat", "lb": "ltz", "lt": "lit", "lv": "lav",
+    "mk": "mkd", "mn": "mon", "mt": "mlt", "ps": "pus", "sk": "slk", "sl": "slv",
+    "sq": "sqi", "sr": "srp", "su": "sun", "tg": "tgk", "uz": "uzb", "yi": "yid",
+    "yo": "yor"
 }
 
 # -------------------------
@@ -167,9 +194,9 @@ def file_translate():
             image = ImageOps.exif_transpose(image)
 
             # Resize image if it is too large to prevent memory crashes (OOM)
-            # 800px is sufficient for OCR and much faster to process
-            if image.width > 800 or image.height > 800:
-                image.thumbnail((800, 800))
+            # Increased to 1800px. 800px is too small for accurate non-English OCR.
+            if image.width > 1800 or image.height > 1800:
+                image.thumbnail((1800, 1800))
 
             # Preprocessing
             # Convert to grayscale
@@ -180,8 +207,8 @@ def file_translate():
             image = ImageEnhance.Sharpness(image).enhance(1.5)
             
             # Attempt 1: OCR with selected source language
-            # --psm 6: Assume a single uniform block of text (better for camera photos)
-            custom_config = r'--oem 3 --psm 6'
+            # --psm 3: Fully automatic page segmentation (Default). Handles mixed layouts better than psm 6.
+            custom_config = r'--oem 3 --psm 3'
             
             if source_lang == "auto":
                 try:
@@ -193,6 +220,7 @@ def file_translate():
                     
                     if valid_langs:
                         ocr_lang = "+".join(valid_langs)
+                        print(f"Auto-detected OCR languages: {ocr_lang}")
                     else:
                         ocr_lang = "eng" # Fallback
                 except Exception:
@@ -207,14 +235,15 @@ def file_translate():
                 print(f"OCR Attempt 1 ({ocr_lang}) failed: {e}")
                 text_content = ""
 
-            # Attempt 2: Fallback with Thresholding (Black & White) - English only
+            # Attempt 2: Fallback with Thresholding (Black & White) - Use SAME languages
             # This is very fast and often fixes noisy backgrounds
             if not text_content.strip():
                 print("OCR Attempt 2 empty. Retrying with thresholding...")
                 try:
                     # Convert to binary (black and white)
                     thresh = image.point(lambda p: 255 if p > 128 else 0)
-                    text_content = pytesseract.image_to_string(thresh, lang='eng', config=custom_config)
+                    # FIX: Use ocr_lang instead of hardcoded 'eng' so it works for Hindi/others too
+                    text_content = pytesseract.image_to_string(thresh, lang=ocr_lang, config=custom_config)
                 except:
                     pass
 

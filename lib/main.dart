@@ -88,6 +88,50 @@ const Map<String, Map<String, String>> kLanguages = {
   "Burmese": {"code": "my", "flag": "🇲🇲"},
   "Khmer": {"code": "km", "flag": "🇰🇭"},
   "Lao": {"code": "lo", "flag": "🇱🇦"},
+
+  // Extended Languages
+  "Amharic": {"code": "am", "flag": "🇪🇹"},
+  "Azerbaijani": {"code": "az", "flag": "🇦🇿"},
+  "Belarusian": {"code": "be", "flag": "🇧🇾"},
+  "Bosnian": {"code": "bs", "flag": "🇧🇦"},
+  "Bulgarian": {"code": "bg", "flag": "🇧🇬"},
+  "Catalan": {"code": "ca", "flag": "🇪🇸"},
+  "Cebuano": {"code": "ceb", "flag": "🇵🇭"},
+  "Corsican": {"code": "co", "flag": "🇫🇷"},
+  "Welsh": {"code": "cy", "flag": "🏴󠁧󠁢󠁷󠁬󠁳󠁿"},
+  "Esperanto": {"code": "eo", "flag": "🏳️"},
+  "Estonian": {"code": "et", "flag": "🇪🇪"},
+  "Basque": {"code": "eu", "flag": "🇪🇸"},
+  "Frisian": {"code": "fy", "flag": "🇳🇱"},
+  "Irish": {"code": "ga", "flag": "🇮🇪"},
+  "Scots Gaelic": {"code": "gd", "flag": "🏴󠁧󠁢󠁳󠁣󠁴󠁿"},
+  "Galician": {"code": "gl", "flag": "🇪🇸"},
+  "Haitian Creole": {"code": "ht", "flag": "🇭🇹"},
+  "Croatian": {"code": "hr", "flag": "🇭🇷"},
+  "Armenian": {"code": "hy", "flag": "🇦🇲"},
+  "Icelandic": {"code": "is", "flag": "🇮🇸"},
+  "Javanese": {"code": "jw", "flag": "🇮🇩"},
+  "Georgian": {"code": "ka", "flag": "🇬🇪"},
+  "Kazakh": {"code": "kk", "flag": "🇰🇿"},
+  "Kyrgyz": {"code": "ky", "flag": "🇰🇬"},
+  "Kurdish": {"code": "ku", "flag": "🇹🇷"},
+  "Latin": {"code": "la", "flag": "🇻🇦"},
+  "Luxembourgish": {"code": "lb", "flag": "🇱🇺"},
+  "Lithuanian": {"code": "lt", "flag": "🇱🇹"},
+  "Latvian": {"code": "lv", "flag": "🇱🇻"},
+  "Macedonian": {"code": "mk", "flag": "🇲🇰"},
+  "Mongolian": {"code": "mn", "flag": "🇲🇳"},
+  "Maltese": {"code": "mt", "flag": "🇲🇹"},
+  "Pashto": {"code": "ps", "flag": "🇦🇫"},
+  "Slovak": {"code": "sk", "flag": "🇸🇰"},
+  "Slovenian": {"code": "sl", "flag": "🇸🇮"},
+  "Albanian": {"code": "sq", "flag": "🇦🇱"},
+  "Serbian": {"code": "sr", "flag": "🇷🇸"},
+  "Sundanese": {"code": "su", "flag": "🇮🇩"},
+  "Tajik": {"code": "tg", "flag": "🇹🇯"},
+  "Uzbek": {"code": "uz", "flag": "🇺🇿"},
+  "Yiddish": {"code": "yi", "flag": "🇮🇱"},
+  "Yoruba": {"code": "yo", "flag": "🇳🇬"},
 };
 
 /// ===================== MAIN =====================
@@ -759,9 +803,9 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
     try {
       final XFile? img = await picker.pickImage(
         source: source,
-        maxWidth: 800, // Reduced to 800 for faster OCR processing
-        maxHeight: 800,
-        imageQuality: 60, // Reduced quality for faster upload (text is still clear)
+        // Removed maxWidth, maxHeight, and imageQuality to send full resolution image.
+        // High resolution is critical for accurate OCR extraction.
+        requestFullMetadata: false,
       );
       if (img == null || !mounted) return;
 
