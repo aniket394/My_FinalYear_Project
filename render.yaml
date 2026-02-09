@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: translango-backend
+    runtime: python
+    # This is where the command goes:
+    buildCommand: pip install -r requirements.txt && python download_tessdata.py
+    # Ensure start command points to your app correctly (folder lib, file app.py, instance app)
+    startCommand: gunicorn lib.app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
