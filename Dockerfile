@@ -1,25 +1,28 @@
-# Use an official Python runtime as a parent image
-FROM python:3.11-slim
+# Use a lightweight Python base image
+FROM python:3.10-slim
 
-# Suppress the warning about running pip as root
-ENV PIP_ROOT_USER_ACTION=ignore
-
-# Install system dependencies (Tesseract OCR)
+# 1. Install system dependencies (Tesseract OCR)
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
-    tesseract-ocr-all \
+    libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# 2. Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# 3. Copy the rest of the application code
 COPY . .
 
-# Run the application using Gunicorn, binding to the PORT environment variable
-# We use --chdir lib because your app.py is inside the lib/ folder
-CMD gunicorn --chdir lib --bind 0.0.0.0:${PORT:-5000} --workers 1 --threads 8 --timeout 120 app:app
+# 4. Run the download script to fetch high-accuracy language models
+RUN python download_tessdata.py
+
+# Set the environment variable so Tesseract knows where the downloaded models are
+ENV TESSDATA_PREFIX=/app/tessdata
+
+# 5. Start the application using Gunicorn
+# Render automatically sets the PORT environment variable
+CMD gunicorn --bind 0.0.0.0:$PORT lib.app:app
