@@ -75,6 +75,19 @@ lang_codes = {
     "Sinhala": "si", "Burmese": "my", "Khmer": "km", "Lao": "lo",
 }
 
+# Tesseract Language Mapping (ISO 639-1 -> Tesseract Code)
+TESS_LANG_MAP = {
+    "hi": "hin", "mr": "mar", "bn": "ben", "gu": "guj", "ta": "tam", "te": "tel",
+    "kn": "kan", "ml": "mal", "pa": "pan", "ur": "urd", "or": "ori", "as": "asm",
+    "ne": "nep", "sa": "san", "en": "eng", "fr": "fra", "es": "spa", "de": "deu",
+    "zh": "chi_sim", "ja": "jpn", "ko": "kor", "ru": "rus", "ar": "ara", "pt": "por",
+    "it": "ita", "nl": "nld", "tr": "tur", "vi": "vie", "th": "tha", "id": "ind",
+    "pl": "pol", "uk": "ukr", "ro": "ron", "el": "ell", "cs": "ces", "sv": "swe",
+    "hu": "hun", "he": "heb", "ms": "msa", "fa": "fas", "tl": "tgl", "fi": "fin",
+    "da": "dan", "no": "nor", "sw": "swa", "af": "afr", "si": "sin", "my": "mya",
+    "km": "khm", "lo": "lao"
+}
+
 # -------------------------
 # UPLOAD FOLDER
 # -------------------------
@@ -129,6 +142,7 @@ def file_translate():
             return jsonify({"error": "No selected file"}), 400
 
         target_lang = request.form.get("target_lang", "hi")
+        source_lang = request.form.get("source_lang", "en")
         text_content = ""
         filename = file.filename.lower() if file.filename else ""
         print(f"Processing file: {filename}, Content-Type: {file.content_type}")
@@ -165,14 +179,16 @@ def file_translate():
             # Sharpening helps extract text from blurry low-quality images
             image = ImageEnhance.Sharpness(image).enhance(1.5)
             
-            # Attempt 1: English OCR with preprocessing (Reduced memory usage)
+            # Attempt 1: OCR with selected source language
             # --psm 6: Assume a single uniform block of text (better for camera photos)
             custom_config = r'--oem 3 --psm 6'
+            ocr_lang = TESS_LANG_MAP.get(source_lang, "eng")
+
             try:
-                # Try to read both English and Hindi text (Great for Indian context)
-                text_content = pytesseract.image_to_string(image, lang='eng+hin', config=custom_config)
+                # Try to read text in the selected language
+                text_content = pytesseract.image_to_string(image, lang=ocr_lang, config=custom_config)
             except Exception as e:
-                print(f"OCR Attempt 1 failed: {e}")
+                print(f"OCR Attempt 1 ({ocr_lang}) failed: {e}")
                 text_content = ""
 
             # Attempt 2: Fallback with Thresholding (Black & White) - English only

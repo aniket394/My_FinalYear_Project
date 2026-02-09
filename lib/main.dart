@@ -1,6 +1,7 @@
 // ===================== IMPORTS =====================
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:translango/translate_service.dart';
+import 'package:http/http.dart' as http;
 
 /// ===================== UI THEME =====================
 const Color kBgColor = Color(0xFFF5F7FA);
@@ -748,6 +750,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
   String extracted = "";
   String translated = "";
   bool loading = false;
+  String fromLang = "en";
   String toLang = "hi";
   final picker = ImagePicker();
   final service = TranslatorService();
@@ -769,7 +772,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
         translated = "";
       });
 
-      final result = await service.translateFile(image!, toLang);
+      final result = await _uploadImage(image!, fromLang, toLang);
       if (result.containsKey("error")) {
         extracted = result["error"]!.toString();
         translated = "";
@@ -781,6 +784,24 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
       extracted = "Error processing file: $e";
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<Map<String, dynamic>> _uploadImage(File file, String sourceLang, String targetLang) async {
+    // Using the deployed URL from app.py. Change to http://10.0.2.2:5000 if running locally on Android emulator.
+    const String baseUrl = "https://my-finalyear-project.onrender.com"; 
+    var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/file_translate"));
+    request.fields['source_lang'] = sourceLang;
+    request.fields['target_lang'] = targetLang;
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    try {
+      var response = await request.send();
+      var responseData = await response.stream.bytesToString();
+      if (response.statusCode == 200) return json.decode(responseData);
+      return {"error": "Server error: ${response.statusCode}"};
+    } catch (e) {
+      return {"error": "Connection error: $e"};
     }
   }
 
@@ -839,10 +860,10 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
             const SizedBox(height: 10),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.04),
@@ -851,25 +872,46 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
                   ),
                 ],
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  menuMaxHeight: 300,
-                  value: toLang,
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
-                  items: kLanguages.entries.map((e) => DropdownMenuItem(
-                        value: e.value["code"],
-                        child: Text(
-                          "${e.value["flag"]} ${e.key}",
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: kTextPrimary),
-                        ),
-                      )).toList(),
-                  onChanged: (val) {
-                    setState(() => toLang = val!);
-                    _reTranslate();
-                  },
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                        value: fromLang,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
+                        items: kLanguages.entries.map((e) => DropdownMenuItem(
+                              value: e.value["code"],
+                              child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
+                            )).toList(),
+                        onChanged: (val) => setState(() => fromLang = val!),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    child: const Icon(Icons.arrow_forward_rounded, color: kPrimaryColor),
+                  ),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                        value: toLang,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
+                        items: kLanguages.entries.map((e) => DropdownMenuItem(
+                              value: e.value["code"],
+                              child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
+                            )).toList(),
+                        onChanged: (val) {
+                          setState(() => toLang = val!);
+                          _reTranslate();
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
@@ -994,6 +1036,7 @@ class _FilesScreenState extends State<FilesScreen> {
   String translated = "";
   String? fileName;
   bool loading = false;
+  String fromLang = "en";
   String toLang = "hi";
   final service = TranslatorService();
 
@@ -1011,7 +1054,7 @@ class _FilesScreenState extends State<FilesScreen> {
 
     try {
       final file = File(result.files.single.path!);
-      final response = await service.translateFile(file, toLang);
+      final response = await _uploadFile(file, fromLang, toLang);
       if (response.containsKey("error")) {
         extracted = response["error"]!.toString();
         translated = "";
@@ -1024,6 +1067,23 @@ class _FilesScreenState extends State<FilesScreen> {
     }
 
     if (mounted) setState(() => loading = false);
+  }
+
+  Future<Map<String, dynamic>> _uploadFile(File file, String sourceLang, String targetLang) async {
+    const String baseUrl = "https://my-finalyear-project.onrender.com"; 
+    var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/file_translate"));
+    request.fields['source_lang'] = sourceLang;
+    request.fields['target_lang'] = targetLang;
+    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    try {
+      var response = await request.send();
+      var responseData = await response.stream.bytesToString();
+      if (response.statusCode == 200) return json.decode(responseData);
+      return {"error": "Server error: ${response.statusCode}"};
+    } catch (e) {
+      return {"error": "Connection error: $e"};
+    }
   }
 
   Future<void> _reTranslate() async {
@@ -1079,10 +1139,10 @@ class _FilesScreenState extends State<FilesScreen> {
             const SizedBox(height: 10),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.04),
@@ -1091,25 +1151,46 @@ class _FilesScreenState extends State<FilesScreen> {
                   ),
                 ],
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  menuMaxHeight: 300,
-                  value: toLang,
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
-                  items: kLanguages.entries.map((e) => DropdownMenuItem(
-                        value: e.value["code"],
-                        child: Text(
-                          "${e.value["flag"]} ${e.key}",
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: kTextPrimary),
-                        ),
-                      )).toList(),
-                  onChanged: (val) {
-                    setState(() => toLang = val!);
-                    _reTranslate();
-                  },
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                        value: fromLang,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
+                        items: kLanguages.entries.map((e) => DropdownMenuItem(
+                              value: e.value["code"],
+                              child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
+                            )).toList(),
+                        onChanged: (val) => setState(() => fromLang = val!),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    child: const Icon(Icons.arrow_forward_rounded, color: kPrimaryColor),
+                  ),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                        value: toLang,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
+                        items: kLanguages.entries.map((e) => DropdownMenuItem(
+                              value: e.value["code"],
+                              child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
+                            )).toList(),
+                        onChanged: (val) {
+                          setState(() => toLang = val!);
+                          _reTranslate();
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 10),
