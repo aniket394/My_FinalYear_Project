@@ -746,11 +746,11 @@ class CameraScreenUI extends StatefulWidget {
 }
 
 class _CameraScreenUIState extends State<CameraScreenUI> {
-  File? image;
+  Uint8List? imageBytes; // Changed from File? to Uint8List? for Web support
   String extracted = "";
   String translated = "";
   bool loading = false;
-  String fromLang = "en";
+  String fromLang = "auto";
   String toLang = "hi";
   final picker = ImagePicker();
   final service = TranslatorService();
@@ -765,14 +765,15 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
       );
       if (img == null || !mounted) return;
 
+      final bytes = await img.readAsBytes(); // Read as bytes (Works on Web & Mobile)
       setState(() {
-        image = File(img.path);
+        imageBytes = bytes;
         loading = true;
         extracted = "";
         translated = "";
       });
 
-      final result = await _uploadImage(image!, fromLang, toLang);
+      final result = await _uploadImage(bytes, img.name, fromLang, toLang);
       if (result.containsKey("error")) {
         extracted = result["error"]!.toString();
         translated = "";
@@ -787,13 +788,13 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
     }
   }
 
-  Future<Map<String, dynamic>> _uploadImage(File file, String sourceLang, String targetLang) async {
+  Future<Map<String, dynamic>> _uploadImage(List<int> bytes, String filename, String sourceLang, String targetLang) async {
     // Using the deployed URL from app.py. Change to http://10.0.2.2:5000 if running locally on Android emulator.
     const String baseUrl = "https://my-finalyear-project.onrender.com"; 
     var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/file_translate"));
     request.fields['source_lang'] = sourceLang;
     request.fields['target_lang'] = targetLang;
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
 
     try {
       var response = await request.send();
@@ -874,25 +875,8 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
               ),
               child: Row(
                 children: [
-                  Expanded(
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        menuMaxHeight: 300,
-                        value: fromLang,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
-                        items: kLanguages.entries.map((e) => DropdownMenuItem(
-                              value: e.value["code"],
-                              child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
-                            )).toList(),
-                        onChanged: (val) => setState(() => fromLang = val!),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                    child: const Icon(Icons.arrow_forward_rounded, color: kPrimaryColor),
-                  ),
+                  const Text("Translate to:", style: TextStyle(color: kTextSecondary, fontSize: 16, fontWeight: FontWeight.w500)),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
@@ -923,11 +907,11 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFE1E5EA),
                   borderRadius: BorderRadius.circular(30),
-                  image: image != null
-                      ? DecorationImage(image: FileImage(image!), fit: BoxFit.cover)
+                  image: imageBytes != null
+                      ? DecorationImage(image: MemoryImage(imageBytes!), fit: BoxFit.cover)
                       : null,
                 ),
-                child: image == null
+                child: imageBytes == null
                     ? Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
@@ -951,7 +935,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
                           if (extracted.isNotEmpty) ...[
                             cardText("Extracted Text", extracted),
                             cardText("Translated Text", translated),
-                          ] else if (!loading && image != null)
+                          ] else if (!loading && imageBytes != null)
                             const Text("Processing complete. No text found.", style: TextStyle(color: kTextSecondary)),
                         ],
                       ),
@@ -1006,7 +990,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
                 IconButton(
                   onPressed: () {
                     setState(() {
-                      image = null;
+                      imageBytes = null;
                       extracted = "";
                       translated = "";
                     });
@@ -1036,7 +1020,7 @@ class _FilesScreenState extends State<FilesScreen> {
   String translated = "";
   String? fileName;
   bool loading = false;
-  String fromLang = "en";
+  String fromLang = "auto";
   String toLang = "hi";
   final service = TranslatorService();
 
@@ -1044,6 +1028,7 @@ class _FilesScreenState extends State<FilesScreen> {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['txt', 'pdf', 'docx'],
+      withData: true, // Important: Forces loading file content as bytes for Web
     );
     if (result == null || !mounted) return;
 
@@ -1053,8 +1038,16 @@ class _FilesScreenState extends State<FilesScreen> {
     });
 
     try {
-      final file = File(result.files.single.path!);
-      final response = await _uploadFile(file, fromLang, toLang);
+      // Get bytes directly. On Mobile with 'withData: true', bytes are populated.
+      // Fallback to reading from path is only needed if bytes are null (rare with withData: true).
+      List<int>? fileBytes = result.files.single.bytes;
+      if (fileBytes == null && result.files.single.path != null) {
+        fileBytes = await File(result.files.single.path!).readAsBytes();
+      }
+      
+      if (fileBytes == null) throw Exception("Could not read file data");
+      
+      final response = await _uploadFile(fileBytes, result.files.single.name, fromLang, toLang);
       if (response.containsKey("error")) {
         extracted = response["error"]!.toString();
         translated = "";
@@ -1069,12 +1062,12 @@ class _FilesScreenState extends State<FilesScreen> {
     if (mounted) setState(() => loading = false);
   }
 
-  Future<Map<String, dynamic>> _uploadFile(File file, String sourceLang, String targetLang) async {
+  Future<Map<String, dynamic>> _uploadFile(List<int> bytes, String filename, String sourceLang, String targetLang) async {
     const String baseUrl = "https://my-finalyear-project.onrender.com"; 
     var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/file_translate"));
     request.fields['source_lang'] = sourceLang;
     request.fields['target_lang'] = targetLang;
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
 
     try {
       var response = await request.send();
@@ -1153,25 +1146,8 @@ class _FilesScreenState extends State<FilesScreen> {
               ),
               child: Row(
                 children: [
-                  Expanded(
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        menuMaxHeight: 300,
-                        value: fromLang,
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
-                        items: kLanguages.entries.map((e) => DropdownMenuItem(
-                              value: e.value["code"],
-                              child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
-                            )).toList(),
-                        onChanged: (val) => setState(() => fromLang = val!),
-                      ),
-                    ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                    child: const Icon(Icons.arrow_forward_rounded, color: kPrimaryColor),
-                  ),
+                  const Text("Translate to:", style: TextStyle(color: kTextSecondary, fontSize: 16, fontWeight: FontWeight.w500)),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(

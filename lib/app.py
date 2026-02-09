@@ -142,7 +142,7 @@ def file_translate():
             return jsonify({"error": "No selected file"}), 400
 
         target_lang = request.form.get("target_lang", "hi")
-        source_lang = request.form.get("source_lang", "en")
+        source_lang = request.form.get("source_lang", "auto")
         text_content = ""
         filename = file.filename.lower() if file.filename else ""
         print(f"Processing file: {filename}, Content-Type: {file.content_type}")
@@ -182,7 +182,23 @@ def file_translate():
             # Attempt 1: OCR with selected source language
             # --psm 6: Assume a single uniform block of text (better for camera photos)
             custom_config = r'--oem 3 --psm 6'
-            ocr_lang = TESS_LANG_MAP.get(source_lang, "eng")
+            
+            if source_lang == "auto":
+                try:
+                    # Auto-detect: Use all languages installed on the server that match our map
+                    installed_langs = set(pytesseract.get_languages(config=''))
+                    supported_codes = set(TESS_LANG_MAP.values())
+                    # Intersection: Only use languages that are both supported AND installed
+                    valid_langs = [code for code in supported_codes if code in installed_langs]
+                    
+                    if valid_langs:
+                        ocr_lang = "+".join(valid_langs)
+                    else:
+                        ocr_lang = "eng" # Fallback
+                except Exception:
+                    ocr_lang = "eng" # Fallback if get_languages fails
+            else:
+                ocr_lang = TESS_LANG_MAP.get(source_lang, "eng")
 
             try:
                 # Try to read text in the selected language
