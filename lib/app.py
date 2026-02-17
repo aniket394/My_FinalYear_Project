@@ -146,6 +146,8 @@ EASYOCR_LANG_MAP = {
     "brx": "hi",  # Bodo -> Hindi
     "sa": "hi",   # Sanskrit -> Hindi (Devanagari)
     "bho": "bho", # Bhojpuri (Supported)
+    "sr": "rs_cyrillic", # Serbian -> Serbian (Cyrillic)
+    "tg": "tjk",  # Tajik
 }
 
 # -------------------------
