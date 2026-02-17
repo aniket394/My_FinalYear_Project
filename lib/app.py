@@ -136,16 +136,13 @@ EASYOCR_LANG_MAP = {
     "zh-tw": "ch_tra", # Chinese Traditional
     
     # Mappings for languages not directly supported by EasyOCR to their script equivalent
-    "mai": "hi",  # Maithili -> Hindi (Devanagari)
     "sat": "hi",  # Santali -> Hindi (Devanagari fallback)
     "ks": "ur",   # Kashmiri -> Urdu
-    "gom": "mr",  # Konkani -> Marathi
     "sd": "ur",   # Sindhi -> Urdu (Perso-Arabic)
     "doi": "hi",  # Dogri -> Hindi
     "mni": "bn",  # Manipuri -> Bengali
     "brx": "hi",  # Bodo -> Hindi
     "sa": "hi",   # Sanskrit -> Hindi (Devanagari)
-    "bho": "bho", # Bhojpuri (Supported)
     "sr": "rs_cyrillic", # Serbian -> Serbian (Cyrillic)
     "tg": "tjk",  # Tajik
 }
