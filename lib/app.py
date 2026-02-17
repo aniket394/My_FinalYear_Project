@@ -7,6 +7,7 @@ import re
 from PIL import Image, ImageOps, ImageEnhance
 import pytesseract, shutil
 from functools import lru_cache
+import gc
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -237,8 +238,8 @@ def file_translate():
 
             # Resize image if it is too large to prevent memory crashes (OOM)
             # Reduced to 1800px to prevent server crashes (OOM) on free tier with EasyOCR
-            if image.width > 1800 or image.height > 1800:
-                image.thumbnail((1800, 1800))
+            if image.width > 1024 or image.height > 1024:
+                image.thumbnail((1024, 1024))
 
             # Preprocessing
             # Convert to grayscale
@@ -326,6 +327,8 @@ def file_translate():
                     results = reader.readtext(image, detail=0, paragraph=True)
                     if results:
                         text_content = "\n".join(results)
+                    del reader
+                    gc.collect()
                 except Exception as e:
                     print(f"EasyOCR failed: {e}")
 
@@ -351,8 +354,22 @@ def file_translate():
                 return jsonify({"error": "No text found in PDF. Scanned PDFs are not supported."}), 400
             return jsonify({"error": "No text extracted"}), 400
 
-        translated_text = get_cached_translation(text_content, target_lang)
-        return jsonify({"original_text": text_content, "translated_text": translated_text})
+        # Translate in chunks to avoid 5000 char limit of Google Translator
+        try:
+            if len(text_content) > 4500:
+                chunks = [text_content[i:i+4500] for i in range(0, len(text_content), 4500)]
+                translated_chunks = []
+                translator = GoogleTranslator(source="auto", target=target_lang)
+                for chunk in chunks:
+                    translated_chunks.append(translator.translate(chunk))
+                translated_text = " ".join(translated_chunks)
+            else:
+                translated_text = get_cached_translation(text_content, target_lang)
+            
+            return jsonify({"original_text": text_content, "translated_text": translated_text})
+        except Exception as e:
+            print(f"Translation Error: {e}")
+            return jsonify({"error": "Translation failed. Text might be too long or API unavailable."}), 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
