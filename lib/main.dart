@@ -26,6 +26,7 @@ const LinearGradient kGradient = LinearGradient(
 );
 
 const Map<String, Map<String, String>> kLanguages = {
+  "Auto Detect": {"code": "auto", "flag": "✨"},
   // Indian Languages
   "Hindi": {"code": "hi", "flag": "🇮🇳"},
   "Marathi": {"code": "mr", "flag": "🇮🇳"},
@@ -794,7 +795,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
   String extracted = "";
   String translated = "";
   bool loading = false;
-  String fromLang = "auto";
+  String fromLang = "auto"; // Default to Auto for smart detection
   String toLang = "hi";
   final picker = ImagePicker();
   final service = TranslatorService();
@@ -803,8 +804,9 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
     try {
       final XFile? img = await picker.pickImage(
         source: source,
-        // Removed maxWidth, maxHeight, and imageQuality to send full resolution image.
-        // High resolution is critical for accurate OCR extraction.
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
         requestFullMetadata: false,
       );
       if (img == null || !mounted) return;
@@ -836,6 +838,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
     // Using the deployed URL from app.py. Change to http://10.0.2.2:5000 if running locally on Android emulator.
     const String baseUrl = "https://my-finalyear-project.onrender.com"; 
     var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/file_translate"));
+    request.headers['Accept'] = 'application/json';
     request.fields['source_lang'] = sourceLang;
     request.fields['target_lang'] = targetLang;
     request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
@@ -919,8 +922,25 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
               ),
               child: Row(
                 children: [
-                  const Text("Translate to:", style: TextStyle(color: kTextSecondary, fontSize: 16, fontWeight: FontWeight.w500)),
-                  const SizedBox(width: 16),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                        value: fromLang,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
+                        items: kLanguages.entries.map((e) => DropdownMenuItem(
+                              value: e.value["code"],
+                              child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
+                            )).toList(),
+                        onChanged: (val) => setState(() => fromLang = val!),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    child: const Icon(Icons.arrow_forward_rounded, color: kTextSecondary, size: 20),
+                  ),
                   Expanded(
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
@@ -1064,7 +1084,7 @@ class _FilesScreenState extends State<FilesScreen> {
   String translated = "";
   String? fileName;
   bool loading = false;
-  String fromLang = "auto";
+  String fromLang = "auto"; // Default to Auto
   String toLang = "hi";
   final service = TranslatorService();
 
@@ -1109,6 +1129,7 @@ class _FilesScreenState extends State<FilesScreen> {
   Future<Map<String, dynamic>> _uploadFile(List<int> bytes, String filename, String sourceLang, String targetLang) async {
     const String baseUrl = "https://my-finalyear-project.onrender.com"; 
     var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/file_translate"));
+    request.headers['Accept'] = 'application/json';
     request.fields['source_lang'] = sourceLang;
     request.fields['target_lang'] = targetLang;
     request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
@@ -1190,8 +1211,25 @@ class _FilesScreenState extends State<FilesScreen> {
               ),
               child: Row(
                 children: [
-                  const Text("Translate to:", style: TextStyle(color: kTextSecondary, fontSize: 16, fontWeight: FontWeight.w500)),
-                  const SizedBox(width: 16),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        menuMaxHeight: 300,
+                        value: fromLang,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
+                        items: kLanguages.entries.map((e) => DropdownMenuItem(
+                              value: e.value["code"],
+                              child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
+                            )).toList(),
+                        onChanged: (val) => setState(() => fromLang = val!),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    child: const Icon(Icons.arrow_forward_rounded, color: kTextSecondary, size: 20),
+                  ),
                   Expanded(
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(

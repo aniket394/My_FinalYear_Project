@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from deep_translator import GoogleTranslator
 import os, docx, PyPDF2, io
+import re
 from PIL import Image, ImageOps, ImageEnhance
 import pytesseract, shutil
 import easyocr
@@ -10,6 +11,13 @@ from functools import lru_cache
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 # -------------------------
 # TESSERACT CONFIGURATION
@@ -131,20 +139,23 @@ TESS_LANG_MAP = {
 # EasyOCR Language Mapping (ISO 639-1 -> EasyOCR Code)
 # EasyOCR uses standard ISO codes mostly, but Chinese is different.
 EASYOCR_LANG_MAP = {
-    "zh": "ch_sim", # Chinese Simplified
-    "zh-cn": "ch_sim",
-    "zh-tw": "ch_tra", # Chinese Traditional
+    "zh": "ch_sim", "zh-cn": "ch_sim", "zh-tw": "ch_tra",
+    "cs": "cs", "da": "da", "nl": "nl", "de": "de", "en": "en", "es": "es", "fi": "fi",
+    "fr": "fr", "hu": "hu", "id": "id", "it": "it", "ja": "ja", "ko": "ko", "no": "no",
+    "pl": "pl", "pt": "pt", "ro": "ro", "ru": "ru", "sk": "sk", "tr": "tr", "vi": "vi",
+    "ar": "ar", "bn": "bn", "hi": "hi", "mr": "mr", "ne": "ne", "ta": "ta", "te": "te",
+    "th": "th", "ur": "ur", "tl": "tl", "ms": "ms", "sw": "sw", "fa": "fa", "uk": "uk",
+    "sv": "sv", "el": "el", "he": "he", "si": "si", "my": "my", "km": "km", "lo": "lo",
     
     # Mappings for languages not directly supported by EasyOCR to their script equivalent
-    "sat": "hi",  # Santali -> Hindi (Devanagari fallback)
-    "ks": "ur",   # Kashmiri -> Urdu
-    "sd": "ur",   # Sindhi -> Urdu (Perso-Arabic)
-    "doi": "hi",  # Dogri -> Hindi
-    "mni": "bn",  # Manipuri -> Bengali
-    "brx": "hi",  # Bodo -> Hindi
-    "sa": "hi",   # Sanskrit -> Hindi (Devanagari)
-    "sr": "rs_cyrillic", # Serbian -> Serbian (Cyrillic)
-    "tg": "tjk",  # Tajik
+    "mai": "hi", "sat": "hi", "ks": "ur", "gom": "mr", "sd": "ur", "doi": "hi",
+    "mni": "bn", "brx": "hi", "sa": "hi", "bho": "hi", "as": "bn",
+    "sr": "rs_cyrillic", # Serbian
+    "tg": "tjk", # Tajik
+    "uz": "uz", "ug": "ug", "be": "be", "bg": "bg", "bs": "bs", "ca": "ca",
+    "cy": "cy", "et": "et", "ga": "ga", "hr": "hr", "is": "is", "ku": "ku",
+    "la": "la", "lt": "lt", "lv": "lv", "mk": "mk", "mt": "mt", "sq": "sq",
+    "sl": "sl", "az": "az"
 }
 
 # -------------------------
@@ -226,9 +237,9 @@ def file_translate():
             image = ImageOps.exif_transpose(image)
 
             # Resize image if it is too large to prevent memory crashes (OOM)
-            # Increased to 2500px for better accuracy on high-res camera images
-            if image.width > 2500 or image.height > 2500:
-                image.thumbnail((2500, 2500))
+            # Reduced to 1800px to prevent server crashes (OOM) on free tier with EasyOCR
+            if image.width > 1800 or image.height > 1800:
+                image.thumbnail((1800, 1800))
 
             # Preprocessing
             # Convert to grayscale
@@ -258,7 +269,35 @@ def file_translate():
                         ocr_lang = "+".join(valid_langs)
                         print(f"Auto-detected OCR languages: {ocr_lang}")
                     else:
-                        ocr_lang = "eng" # Fallback
+                        ocr_lang = "eng" # Fallback if no languages found
+                        
+                    # --- SMART SCRIPT DETECTION FOR EASYOCR ---
+                    # Use Tesseract OSD to detect the script (e.g., Devanagari, Han, Arabic)
+                    # This allows us to load the correct EasyOCR models without loading ALL of them (which crashes memory).
+                    try:
+                        osd = pytesseract.image_to_osd(image, config='--psm 0 -c min_characters_to_try=5')
+                        script_match = re.search(r"Script: ([a-zA-Z]+)", osd)
+                        if script_match:
+                            script = script_match.group(1)
+                            print(f"Auto-detected Script: {script}")
+                            
+                            # Map Script to EasyOCR Language Codes
+                            script_map = {
+                                "Devanagari": ['hi', 'mr', 'ne', 'mai', 'bho'], # Hindi, Marathi, Nepali, etc.
+                                "Han": ['ch_sim', 'ch_tra'], # Chinese
+                                "Cyrillic": ['ru', 'rs_cyrillic', 'bg', 'uk', 'mn'], # Russian, etc.
+                                "Arabic": ['ar', 'ur', 'fa'], # Arabic, Urdu, Persian
+                                "Bengali": ['bn', 'mni', 'as'],
+                                "Tamil": ['ta'], "Telugu": ['te'], "Kannada": ['kn'], 
+                                "Malayalam": ['ml'], "Gujarati": ['gu'], "Gurmukhi": ['pa']
+                            }
+                            
+                            if script in script_map:
+                                for lang in script_map[script]:
+                                    if lang not in ocr_langs:
+                                        ocr_langs.append(lang)
+                    except Exception as e:
+                        print(f"Script detection failed (using default English): {e}")
                 except Exception:
                     ocr_lang = "eng" # Fallback if get_languages fails
             else:
@@ -278,19 +317,20 @@ def file_translate():
             except Exception as e:
                 print(f"Tesseract Attempt 1 failed: {e}")
 
-            try:
-                # Initialize Reader (gpu=False for Render free tier/CPU)
-                reader = easyocr.Reader(ocr_langs, gpu=False)
-                # detail=0 returns just the text list
-                results = reader.readtext(image, detail=0, paragraph=True)
-                if results:
-                    text_content = "\n".join(results)
-            except Exception as e:
-                print(f"EasyOCR failed: {e}")
+            # Attempt 2: EasyOCR (ONLY if Tesseract failed)
+            # EasyOCR is heavy and can crash free servers. We only use it as a fallback.
+            if not text_content.strip():
+                try:
+                    print(f"Tesseract failed. Attempting EasyOCR with languages: {ocr_langs}")
+                    reader = easyocr.Reader(ocr_langs, gpu=False)
+                    results = reader.readtext(image, detail=0, paragraph=True)
+                    if results:
+                        text_content = "\n".join(results)
+                except Exception as e:
+                    print(f"EasyOCR failed: {e}")
 
-            # Attempt 2: Fallback with Thresholding (Black & White) - Use SAME languages
+            # Attempt 3: Fallback with Thresholding (Black & White)
             # This is very fast and often fixes noisy backgrounds
-            # Fallback Attempt (Thresholding)
             if not text_content.strip():
                 print("OCR Attempt 2 empty. Retrying with thresholding...")
                 try:
@@ -298,16 +338,6 @@ def file_translate():
                     thresh = image.point(lambda p: 255 if p > 128 else 0)
                     # FIX: Use ocr_lang instead of hardcoded 'eng' so it works for Hindi/others too
                     text_content = pytesseract.image_to_string(thresh, lang=ocr_lang, config=custom_config)
-                    
-                    # Convert PIL image to bytes for EasyOCR
-                    img_byte_arr = io.BytesIO()
-                    thresh.save(img_byte_arr, format='PNG')
-                    img_bytes = img_byte_arr.getvalue()
-
-                    if reader:
-                        results = reader.readtext(img_bytes, detail=0, paragraph=True)
-                        if results:
-                            text_content = "\n".join(results)
                 except Exception:
                     pass
 
