@@ -6,7 +6,6 @@ import os, docx, PyPDF2, io
 import re
 from PIL import Image, ImageOps, ImageEnhance
 import pytesseract, shutil
-import easyocr
 from functools import lru_cache
 
 app = Flask(__name__)
@@ -322,6 +321,7 @@ def file_translate():
             if not text_content.strip():
                 try:
                     print(f"Tesseract failed. Attempting EasyOCR with languages: {ocr_langs}")
+                    import easyocr
                     reader = easyocr.Reader(ocr_langs, gpu=False)
                     results = reader.readtext(image, detail=0, paragraph=True)
                     if results:
