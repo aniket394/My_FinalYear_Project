@@ -310,18 +310,20 @@ def file_translate():
             # Attempt 2: EasyOCR (ONLY if Tesseract failed)
             # EasyOCR is heavy and can crash free servers. We only use it as a fallback.
             if not text_content.strip():
-                try:
-                    print(f"Tesseract failed. Attempting EasyOCR with languages: {easyocr_langs}")
-                    import easyocr
-                    reader = easyocr.Reader(easyocr_langs, gpu=False)
-                    results = reader.readtext(image, detail=0, paragraph=True)
-                    if results:
-                        text_content = "\n".join(results)
-                    del reader
-                    del easyocr
-                    gc.collect()
-                except Exception as e:
-                    print(f"EasyOCR failed: {e}")
+                # EasyOCR disabled to prevent 502 Memory Errors on free tier hosting
+                print("Skipping EasyOCR fallback to prevent memory crash.")
+                # try:
+                #     print(f"Tesseract failed. Attempting EasyOCR with languages: {easyocr_langs}")
+                #     import easyocr
+                #     reader = easyocr.Reader(easyocr_langs, gpu=False)
+                #     results = reader.readtext(image, detail=0, paragraph=True)
+                #     if results:
+                #         text_content = "\n".join(results)
+                #     del reader
+                #     del easyocr
+                #     gc.collect()
+                # except Exception as e:
+                #     print(f"EasyOCR failed: {e}")
 
             # Attempt 3: Fallback with Thresholding (Black & White)
             # This is very fast and often fixes noisy backgrounds
