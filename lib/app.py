@@ -360,9 +360,15 @@ def file_translate():
             return jsonify({"original_text": text_content, "translated_text": translated_text})
         except Exception as e:
             print(f"Translation Error: {e}")
-            return jsonify({"error": "Translation failed. Text might be too long or API unavailable."}), 500
+            # FALLBACK: Return original text with a warning, instead of crashing with 500
+            return jsonify({
+                "original_text": text_content, 
+                "translated_text": text_content, # Fallback to original text
+                "warning": f"Translation failed: {str(e)}"
+            }), 200
 
     except Exception as e:
+        print(f"Critical Error in file_translate: {e}")
         return jsonify({"error": str(e)}), 500
 
 # -------------------------
