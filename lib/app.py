@@ -2,9 +2,10 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from deep_translator import GoogleTranslator
-import os, docx, PyPDF2
+import os, docx, PyPDF2, io
 from PIL import Image, ImageOps, ImageEnhance
 import pytesseract, shutil
+import easyocr
 from functools import lru_cache
 
 app = Flask(__name__)
@@ -127,6 +128,26 @@ TESS_LANG_MAP = {
     "bho": "hin"  # Bhojpuri -> Hindi
 }
 
+# EasyOCR Language Mapping (ISO 639-1 -> EasyOCR Code)
+# EasyOCR uses standard ISO codes mostly, but Chinese is different.
+EASYOCR_LANG_MAP = {
+    "zh": "ch_sim", # Chinese Simplified
+    "zh-cn": "ch_sim",
+    "zh-tw": "ch_tra", # Chinese Traditional
+    
+    # Mappings for languages not directly supported by EasyOCR to their script equivalent
+    "mai": "hi",  # Maithili -> Hindi (Devanagari)
+    "sat": "hi",  # Santali -> Hindi (Devanagari fallback)
+    "ks": "ur",   # Kashmiri -> Urdu
+    "gom": "mr",  # Konkani -> Marathi
+    "sd": "ur",   # Sindhi -> Urdu (Perso-Arabic)
+    "doi": "hi",  # Dogri -> Hindi
+    "mni": "bn",  # Manipuri -> Bengali
+    "brx": "hi",  # Bodo -> Hindi
+    "sa": "hi",   # Sanskrit -> Hindi (Devanagari)
+    "bho": "bho", # Bhojpuri (Supported)
+}
+
 # -------------------------
 # UPLOAD FOLDER
 # -------------------------
@@ -223,6 +244,8 @@ def file_translate():
             # Attempt 1: OCR with selected source language
             # --psm 3: Fully automatic page segmentation (Default). Handles mixed layouts better than psm 6.
             custom_config = r'--oem 3 --psm 3'
+            # Determine EasyOCR languages
+            ocr_langs = ['en'] # Always include English
             
             if source_lang == "auto":
                 try:
@@ -241,16 +264,34 @@ def file_translate():
                     ocr_lang = "eng" # Fallback if get_languages fails
             else:
                 ocr_lang = TESS_LANG_MAP.get(source_lang, "eng")
+            if source_lang != "auto":
+                # Map the source language to EasyOCR code
+                mapped_lang = EASYOCR_LANG_MAP.get(source_lang, source_lang)
+                if mapped_lang not in ocr_langs:
+                    ocr_langs.insert(0, mapped_lang)
+            
+            print(f"Using EasyOCR with languages: {ocr_langs}")
 
+            reader = None
             try:
                 # Try to read text in the selected language
                 text_content = pytesseract.image_to_string(image, lang=ocr_lang, config=custom_config)
             except Exception as e:
-                print(f"OCR Attempt 1 ({ocr_lang}) failed: {e}")
-                text_content = ""
+                print(f"Tesseract Attempt 1 failed: {e}")
+
+            try:
+                # Initialize Reader (gpu=False for Render free tier/CPU)
+                reader = easyocr.Reader(ocr_langs, gpu=False)
+                # detail=0 returns just the text list
+                results = reader.readtext(image, detail=0, paragraph=True)
+                if results:
+                    text_content = "\n".join(results)
+            except Exception as e:
+                print(f"EasyOCR failed: {e}")
 
             # Attempt 2: Fallback with Thresholding (Black & White) - Use SAME languages
             # This is very fast and often fixes noisy backgrounds
+            # Fallback Attempt (Thresholding)
             if not text_content.strip():
                 print("OCR Attempt 2 empty. Retrying with thresholding...")
                 try:
@@ -258,7 +299,17 @@ def file_translate():
                     thresh = image.point(lambda p: 255 if p > 128 else 0)
                     # FIX: Use ocr_lang instead of hardcoded 'eng' so it works for Hindi/others too
                     text_content = pytesseract.image_to_string(thresh, lang=ocr_lang, config=custom_config)
-                except:
+                    
+                    # Convert PIL image to bytes for EasyOCR
+                    img_byte_arr = io.BytesIO()
+                    thresh.save(img_byte_arr, format='PNG')
+                    img_bytes = img_byte_arr.getvalue()
+
+                    if reader:
+                        results = reader.readtext(img_bytes, detail=0, paragraph=True)
+                        if results:
+                            text_content = "\n".join(results)
+                except Exception:
                     pass
 
         else:
