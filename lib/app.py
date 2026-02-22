@@ -3,7 +3,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from deep_translator import GoogleTranslator
 import os, docx, PyPDF2
+import warnings
 from functools import lru_cache
+
+# Suppress FutureWarning messages to clean up logs
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 # Try importing Google Cloud Vision (Install via: pip install google-cloud-vision)
 try:
