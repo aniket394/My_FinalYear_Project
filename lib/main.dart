@@ -857,14 +857,15 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
         script = TextRecognitionScript.korean;
       }
 
-      final TextRecognizer textRecognizer = TextRecognizer(script: script);
-      final inputImage = InputImage.fromFilePath(img.path);
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
-      
-      // Close the recognizer after use to free resources
-      textRecognizer.close();
-      
-      extracted = recognizedText.text;
+      final textRecognizer = TextRecognizer(script: script);
+      try {
+        final inputImage = InputImage.fromFilePath(img.path);
+        final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+        extracted = recognizedText.text;
+      } finally {
+        // Ensure recognizer is always closed to prevent crashes
+        textRecognizer.close();
+      }
 
       if (extracted.trim().isEmpty) {
         extracted = "No text found in the image.";
@@ -1162,14 +1163,14 @@ class _FilesScreenState extends State<FilesScreen> {
           script = TextRecognitionScript.korean;
         }
 
-        final TextRecognizer textRecognizer = TextRecognizer(script: script);
-        final inputImage = InputImage.fromFilePath(result.files.single.path!);
-        final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
-        
-        // Close recognizer
-        textRecognizer.close();
-
-        extracted = recognizedText.text;
+        final textRecognizer = TextRecognizer(script: script);
+        try {
+          final inputImage = InputImage.fromFilePath(result.files.single.path!);
+          final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+          extracted = recognizedText.text;
+        } finally {
+          textRecognizer.close();
+        }
         
         if (extracted.trim().isEmpty) {
           extracted = "No text found in the image.";
