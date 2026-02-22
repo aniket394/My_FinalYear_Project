@@ -1,7 +1,6 @@
 // ===================== IMPORTS =====================
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,8 +8,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:translango/translate_service.dart';
-import 'package:http/http.dart' as http;
+import 'api_service.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 /// ===================== UI THEME =====================
 const Color kBgColor = Color(0xFFF5F7FA);
@@ -225,7 +224,6 @@ class TextTranslatorScreen extends StatefulWidget {
 }
 
 class _TextTranslatorScreenState extends State<TextTranslatorScreen> {
-  final service = TranslatorService();
   final TextEditingController _controller = TextEditingController();
   String output = "";
   bool loading = false;
@@ -240,7 +238,7 @@ class _TextTranslatorScreenState extends State<TextTranslatorScreen> {
     }
     FocusScope.of(context).unfocus();
     setState(() => loading = true);
-    final translation = await service.translateText(_controller.text, toLang);
+    final translation = await ApiService.translateText(_controller.text, toLang);
     if (mounted) setState(() { output = translation; loading = false; });
   }
 
@@ -535,7 +533,6 @@ class _SpeechScreenState extends State<SpeechScreen> {
   double soundLevel = 0.0;
   Timer? _debounce;
   String toLang = "hi";
-  final service = TranslatorService();
 
   @override
   void initState() {
@@ -575,7 +572,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
         _debounce = Timer(const Duration(milliseconds: 500), () async {
           if (text.trim().isEmpty) return;
           if (mounted) setState(() => loading = true);
-          final tr = await service.translateText(text, toLang);
+          final tr = await ApiService.translateText(text, toLang);
           if (mounted) setState(() { translated = tr; loading = false; });
         });
       },
@@ -597,7 +594,7 @@ class _SpeechScreenState extends State<SpeechScreen> {
   Future<void> _reTranslate() async {
     if (text.trim().isEmpty) return;
     setState(() => loading = true);
-    final tr = await service.translateText(text, toLang);
+    final tr = await ApiService.translateText(text, toLang);
     if (mounted) setState(() { translated = tr; loading = false; });
   }
 
@@ -798,7 +795,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
   String fromLang = "auto"; // Default to Auto for smart detection
   String toLang = "hi";
   final picker = ImagePicker();
-  final service = TranslatorService();
+  final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
   Future<void> getImage(ImageSource source) async {
     try {
@@ -819,14 +816,23 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
         translated = "";
       });
 
-      final result = await _uploadImage(bytes, img.name, fromLang, toLang);
-      if (result.containsKey("error")) {
-        extracted = result["error"]!.toString();
-        translated = "";
-      } else {
-        extracted = (result["original_text"] ?? "No text extracted.").toString();
-        translated = (result["translated_text"] ?? "").toString();
+      // Perform OCR using Google ML Kit locally
+      final inputImage = InputImage.fromFilePath(img.path);
+      final RecognizedText recognizedText = await _textRecognizer.processImage(inputImage);
+      
+      extracted = recognizedText.text;
+
+      if (extracted.trim().isEmpty) {
+        extracted = "No text found in the image.";
+        if (mounted) setState(() => loading = false);
+        return;
       }
+
+      // Translate the extracted text
+      final tr = await ApiService.translateText(extracted, toLang);
+      
+      if (mounted) setState(() { translated = tr; });
+
     } catch (e) {
       extracted = "Error processing file: $e";
     } finally {
@@ -834,29 +840,10 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
     }
   }
 
-  Future<Map<String, dynamic>> _uploadImage(List<int> bytes, String filename, String sourceLang, String targetLang) async {
-    // Using the deployed URL from app.py. Change to http://10.0.2.2:5000 if running locally on Android emulator.
-    const String baseUrl = "https://my-finalyear-project.onrender.com"; 
-    var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/file_translate"));
-    request.headers['Accept'] = 'application/json';
-    request.fields['source_lang'] = sourceLang;
-    request.fields['target_lang'] = targetLang;
-    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-
-    try {
-      var response = await request.send();
-      var responseData = await response.stream.bytesToString();
-      if (response.statusCode == 200) return json.decode(responseData);
-      return {"error": "Server error: ${response.statusCode}"};
-    } catch (e) {
-      return {"error": "Connection error: $e"};
-    }
-  }
-
   Future<void> _reTranslate() async {
     if (extracted.trim().isEmpty) return;
     setState(() => loading = true);
-    final tr = await service.translateText(extracted, toLang);
+    final tr = await ApiService.translateText(extracted, toLang);
     if (mounted) setState(() { translated = tr; loading = false; });
   }
 
@@ -893,6 +880,12 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
           Text(text, style: const TextStyle(fontSize: 16, height: 1.5, color: kTextPrimary)),
         ]),
       );
+
+  @override
+  void dispose() {
+    _textRecognizer.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1086,7 +1079,7 @@ class _FilesScreenState extends State<FilesScreen> {
   bool loading = false;
   String fromLang = "auto"; // Default to Auto
   String toLang = "hi";
-  final service = TranslatorService();
+  final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -1102,23 +1095,42 @@ class _FilesScreenState extends State<FilesScreen> {
     });
 
     try {
-      // Get bytes directly. On Mobile with 'withData: true', bytes are populated.
-      // Fallback to reading from path is only needed if bytes are null (rare with withData: true).
-      List<int>? fileBytes = result.files.single.bytes;
-      if (fileBytes == null && result.files.single.path != null) {
-        fileBytes = await File(result.files.single.path!).readAsBytes();
-      }
+      String ext = result.files.single.extension?.toLowerCase() ?? "";
       
-      if (fileBytes == null) throw Exception("Could not read file data");
-      
-      final response = await _uploadFile(fileBytes, result.files.single.name, fromLang, toLang);
-      if (response.containsKey("error")) {
-        extracted = response["error"]!.toString();
-        translated = "";
-      } else {
-        extracted = (response["original_text"] ?? "No text extracted.").toString();
-        translated = (response["translated_text"] ?? "").toString();
+      // If it's an image, use ML Kit locally
+      if (['jpg', 'jpeg', 'png', 'webp'].contains(ext) && result.files.single.path != null) {
+        final inputImage = InputImage.fromFilePath(result.files.single.path!);
+        final RecognizedText recognizedText = await _textRecognizer.processImage(inputImage);
+        extracted = recognizedText.text;
+        
+        if (extracted.trim().isEmpty) {
+          extracted = "No text found in image.";
+          translated = "";
+        } else {
+          translated = await ApiService.translateText(extracted, toLang);
+        }
+      } 
+      // If it's a document, use the backend
+      else {
+        // Get bytes directly. On Mobile with 'withData: true', bytes are populated.
+        // Fallback to reading from path is only needed if bytes are null (rare with withData: true).
+        List<int>? fileBytes = result.files.single.bytes;
+        if (fileBytes == null && result.files.single.path != null) {
+          fileBytes = await File(result.files.single.path!).readAsBytes();
+        }
+        
+        if (fileBytes == null) throw Exception("Could not read file data");
+        
+        final response = await ApiService.translateFile(fileBytes, result.files.single.name, toLang);
+        if (response.containsKey("error")) {
+          extracted = response["error"]!.toString();
+          translated = "";
+        } else {
+          extracted = (response["original_text"] ?? "No text extracted.").toString();
+          translated = (response["translated_text"] ?? "").toString();
+        }
       }
+
     } catch (e) {
       extracted = "Error processing file: $e";
     }
@@ -1126,28 +1138,16 @@ class _FilesScreenState extends State<FilesScreen> {
     if (mounted) setState(() => loading = false);
   }
 
-  Future<Map<String, dynamic>> _uploadFile(List<int> bytes, String filename, String sourceLang, String targetLang) async {
-    const String baseUrl = "https://my-finalyear-project.onrender.com"; 
-    var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/file_translate"));
-    request.headers['Accept'] = 'application/json';
-    request.fields['source_lang'] = sourceLang;
-    request.fields['target_lang'] = targetLang;
-    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-
-    try {
-      var response = await request.send();
-      var responseData = await response.stream.bytesToString();
-      if (response.statusCode == 200) return json.decode(responseData);
-      return {"error": "Server error: ${response.statusCode}"};
-    } catch (e) {
-      return {"error": "Connection error: $e"};
-    }
+  @override
+  void dispose() {
+    _textRecognizer.close();
+    super.dispose();
   }
 
   Future<void> _reTranslate() async {
     if (extracted.trim().isEmpty) return;
     setState(() => loading = true);
-    final tr = await service.translateText(extracted, toLang);
+    final tr = await ApiService.translateText(extracted, toLang);
     if (mounted) setState(() { translated = tr; loading = false; });
   }
 

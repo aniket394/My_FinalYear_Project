@@ -2,11 +2,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from deep_translator import GoogleTranslator
-import os, docx, PyPDF2, io, requests
-import re
-from PIL import Image, ImageOps, ImageEnhance
+import os, docx, PyPDF2
 from functools import lru_cache
-import gc
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -92,98 +89,6 @@ def get_cached_translation(text, target_lang):
     return GoogleTranslator(source="auto", target=target_lang).translate(text)
 
 # -------------------------
-# OCR HELPER FUNCTION
-# -------------------------
-def perform_ocr_space(image, source_lang="auto"):
-    # 1. Prepare image for API call
-    buffered = io.BytesIO()
-
-    # The free OCR.space API has a 1MB file size limit.
-    # Dynamically compress the image to meet that limit.
-    quality = 95
-    image.save(buffered, format="JPEG", quality=quality, optimize=True)
-
-    while buffered.getbuffer().nbytes > 1024 * 1024 and quality > 20:
-        buffered.seek(0)
-        buffered.truncate(0)
-        quality -= 10
-        image.save(buffered, format="JPEG", quality=quality, optimize=True)
-
-    img_bytes = buffered.getvalue()
-    print(f"Final image size: {len(img_bytes) / 1024:.2f} KB with quality {quality}")
-
-    # 2. Set up the API request
-    ocr_url = 'https://api.ocr.space/parse/image'
-    ocr_lang = source_lang if source_lang != 'auto' else 'eng'
-
-    payload = {
-        'apikey': 'helloworld',
-        'language': ocr_lang,
-        'detectOrientation': True,
-        'scale': True,
-        'OCREngine': 2
-    }
-
-    # 3. Send the request
-    try:
-        r = requests.post(ocr_url, files={'file': ('image.jpg', img_bytes, 'image/jpeg')}, data=payload, timeout=30)
-        r.raise_for_status()
-        result = r.json()
-        if result and result.get('ParsedResults') and result['ParsedResults'][0].get('ParsedText'):
-            return result['ParsedResults'][0]['ParsedText']
-        else:
-            error_message = result.get('ErrorMessage', ['Unknown OCR Error'])[0]
-            print(f"OCR.space Error: {error_message}")
-            return None
-    except Exception as e:
-        print(f"OCR API request failed: {e}")
-        return None
-
-# -------------------------
-# SCAN ENDPOINT (Dedicated for Camera Module)
-# -------------------------
-@app.route("/scan", methods=["POST"])
-def scan_image():
-    try:
-        if "file" not in request.files:
-            return jsonify({"error": "No file found"}), 400
-        file = request.files["file"]
-        if file.filename == '':
-            return jsonify({"error": "No selected file"}), 400
-
-        target_lang = request.form.get("target_lang", "hi")
-        source_lang = request.form.get("source_lang", "auto")
-
-        image = Image.open(file)
-        image = ImageOps.exif_transpose(image)
-
-        # Resize if too large
-        if image.width > 1024 or image.height > 1024:
-            image.thumbnail((1024, 1024))
-
-        text_content = perform_ocr_space(image, source_lang)
-
-        if not text_content:
-            return jsonify({"error": "No text extracted"}), 400
-
-        # Translate
-        if len(text_content) > 4500:
-            chunks = [text_content[i:i+4500] for i in range(0, len(text_content), 4500)]
-            translated_chunks = []
-            translator = GoogleTranslator(source="auto", target=target_lang)
-            for chunk in chunks:
-                translated_chunks.append(translator.translate(chunk))
-            translated_text = " ".join(translated_chunks)
-        else:
-            translated_text = get_cached_translation(text_content, target_lang)
-
-        return jsonify({"original_text": text_content, "translated_text": translated_text})
-
-    except Exception as e:
-        print(f"Scan Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-# -------------------------
 # FILE TRANSLATE
 # -------------------------
 @app.route("/file_translate", methods=["POST"])
@@ -218,19 +123,6 @@ def file_translate():
                 page_text = page.extract_text()
                 if page_text:
                     text_content += page_text + "\n"
-
-        elif filename.endswith((".png", ".jpg", ".jpeg", ".webp")) or file.content_type.startswith("image/"):
-            image = Image.open(file)
-            image = ImageOps.exif_transpose(image)
-
-            # Resize image if it is too large to improve performance
-            if image.width > 1024 or image.height > 1024:
-                image.thumbnail((1024, 1024))
-
-            # Use the helper function
-            text_content = perform_ocr_space(image, source_lang)
-            if text_content is None:
-                return jsonify({"error": "Failed to extract text from image."}), 400
 
         else:
             print(f"Error: Unsupported file type: {filename}")

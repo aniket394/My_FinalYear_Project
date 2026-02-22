@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'api_constants.dart';
 
 class ApiService {
+  static const String _baseUrl = "https://my-finalyear-project.onrender.com";
+
   // Use a persistent client to keep the connection open (Reduces latency by ~50%)
   static final http.Client _client = http.Client();
 
@@ -11,7 +11,7 @@ class ApiService {
   static Future<String> translateText(String text, String targetLang) async {
     try {
       final response = await _client.post(
-        Uri.parse(ApiConstants.translateEndpoint),
+        Uri.parse("$_baseUrl/translate"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "text": text,
@@ -37,15 +37,15 @@ class ApiService {
 
   // Function to upload a file (Image/PDF/Docx) for translation
   static Future<Map<String, dynamic>> translateFile(
-      File file, String targetLang) async {
+      List<int> bytes, String filename, String targetLang) async {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse(ApiConstants.fileTranslateEndpoint),
+        Uri.parse("$_baseUrl/file_translate"),
       );
 
       request.fields['target_lang'] = targetLang;
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
 
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
