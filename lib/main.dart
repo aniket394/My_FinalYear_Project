@@ -848,7 +848,7 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
       // Select script based on 'fromLang' or default to Latin
       TextRecognitionScript script = TextRecognitionScript.latin;
       if (['hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx'].contains(fromLang)) {
-        script = TextRecognitionScript.devanagiri;
+        script = TextRecognitionScript.devanagari;
       } else if (fromLang == 'zh') {
         script = TextRecognitionScript.chinese;
       } else if (fromLang == 'ja') {
@@ -1154,7 +1154,7 @@ class _FilesScreenState extends State<FilesScreen> {
         // Select script based on 'fromLang'
         TextRecognitionScript script = TextRecognitionScript.latin;
         if (['hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx'].contains(fromLang)) {
-          script = TextRecognitionScript.devanagiri;
+          script = TextRecognitionScript.devanagari;
         } else if (fromLang == 'zh') {
           script = TextRecognitionScript.chinese;
         } else if (fromLang == 'ja') {
