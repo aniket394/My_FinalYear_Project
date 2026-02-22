@@ -795,7 +795,20 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
   String fromLang = "auto"; // Default to Auto for smart detection
   String toLang = "hi";
   final picker = ImagePicker();
-  final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
+  // Helper to check if ML Kit supports the language on-device
+  bool _isMlKitSupported(String code) {
+    const supported = [
+      // Latin (Auto removed to allow server-side detection or force user selection)
+      'en', 'fr', 'es', 'de', 'pt', 'it', 'nl', 'tr', 'vi', 'th', 'id', 'pl', 'uk', 'ro', 'el', 'cs', 'sv', 'hu', 'ms', 'tl', 'fi', 'da', 'no', 'sw', 'af', 'si', 'my', 'km', 'lo',
+      // Devanagari (Hindi, Marathi, etc.)
+      'hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx',
+      // Chinese, Japanese, Korean
+      'zh', 'ja', 'ko'
+    ];
+    // If code is NOT in this list (e.g., ta, te, bn, gu), return false
+    return supported.contains(code);
+  }
 
   Future<void> getImage(ImageSource source) async {
     try {
@@ -816,15 +829,45 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
         translated = "";
       });
 
+      // 1. Check if we can use ML Kit (On-Device)
+      if (!_isMlKitSupported(fromLang)) {
+        // Fallback to Server-Side OCR for unsupported languages (Tamil, Telugu, etc.)
+        final response = await ApiService.translateFile(bytes, img.name, toLang);
+        
+        if (response.containsKey("error")) {
+          extracted = response["error"]!.toString();
+          translated = "";
+        } else {
+          extracted = (response["original_text"] ?? "No text extracted.").toString();
+          translated = (response["translated_text"] ?? "").toString();
+        }
+        return;
+      }
+
       // Perform OCR using Google ML Kit locally
+      // Select script based on 'fromLang' or default to Latin
+      TextRecognitionScript script = TextRecognitionScript.latin;
+      if (['hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx'].contains(fromLang)) {
+        script = TextRecognitionScript.devanagiri;
+      } else if (fromLang == 'zh') {
+        script = TextRecognitionScript.chinese;
+      } else if (fromLang == 'ja') {
+        script = TextRecognitionScript.japanese;
+      } else if (fromLang == 'ko') {
+        script = TextRecognitionScript.korean;
+      }
+
+      final TextRecognizer textRecognizer = TextRecognizer(script: script);
       final inputImage = InputImage.fromFilePath(img.path);
-      final RecognizedText recognizedText = await _textRecognizer.processImage(inputImage);
+      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      
+      // Close the recognizer after use to free resources
+      textRecognizer.close();
       
       extracted = recognizedText.text;
 
       if (extracted.trim().isEmpty) {
         extracted = "No text found in the image.";
-        if (mounted) setState(() => loading = false);
         return;
       }
 
@@ -880,12 +923,6 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
           Text(text, style: const TextStyle(fontSize: 16, height: 1.5, color: kTextPrimary)),
         ]),
       );
-
-  @override
-  void dispose() {
-    _textRecognizer.close();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1079,18 +1116,32 @@ class _FilesScreenState extends State<FilesScreen> {
   bool loading = false;
   String fromLang = "auto"; // Default to Auto
   String toLang = "hi";
-  final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
+  // Helper to check if ML Kit supports the language on-device
+  bool _isMlKitSupported(String code) {
+    const supported = [
+      // Latin (Auto removed to allow server-side detection or force user selection)
+      'en', 'fr', 'es', 'de', 'pt', 'it', 'nl', 'tr', 'vi', 'th', 'id', 'pl', 'uk', 'ro', 'el', 'cs', 'sv', 'hu', 'ms', 'tl', 'fi', 'da', 'no', 'sw', 'af', 'si', 'my', 'km', 'lo',
+      // Devanagari
+      'hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx',
+      // CJK
+      'zh', 'ja', 'ko'
+    ];
+    return supported.contains(code);
+  }
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['txt', 'pdf', 'docx'],
+      allowedExtensions: ['txt', 'pdf', 'docx', 'jpg', 'jpeg', 'png', 'webp'],
       withData: true, // Important: Forces loading file content as bytes for Web
     );
     if (result == null || !mounted) return;
 
     setState(() {
       loading = true;
+      extracted = "";
+      translated = "";
       fileName = result.files.single.name;
     });
 
@@ -1098,13 +1149,30 @@ class _FilesScreenState extends State<FilesScreen> {
       String ext = result.files.single.extension?.toLowerCase() ?? "";
       
       // If it's an image, use ML Kit locally
-      if (['jpg', 'jpeg', 'png', 'webp'].contains(ext) && result.files.single.path != null) {
+      if (['jpg', 'jpeg', 'png', 'webp'].contains(ext) && result.files.single.path != null && _isMlKitSupported(fromLang)) {
+        // Select script based on 'fromLang'
+        TextRecognitionScript script = TextRecognitionScript.latin;
+        if (['hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx'].contains(fromLang)) {
+          script = TextRecognitionScript.devanagiri;
+        } else if (fromLang == 'zh') {
+          script = TextRecognitionScript.chinese;
+        } else if (fromLang == 'ja') {
+          script = TextRecognitionScript.japanese;
+        } else if (fromLang == 'ko') {
+          script = TextRecognitionScript.korean;
+        }
+
+        final TextRecognizer textRecognizer = TextRecognizer(script: script);
         final inputImage = InputImage.fromFilePath(result.files.single.path!);
-        final RecognizedText recognizedText = await _textRecognizer.processImage(inputImage);
+        final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+        
+        // Close recognizer
+        textRecognizer.close();
+
         extracted = recognizedText.text;
         
         if (extracted.trim().isEmpty) {
-          extracted = "No text found in image.";
+          extracted = "No text found in the image.";
           translated = "";
         } else {
           translated = await ApiService.translateText(extracted, toLang);
@@ -1133,15 +1201,10 @@ class _FilesScreenState extends State<FilesScreen> {
 
     } catch (e) {
       extracted = "Error processing file: $e";
+      translated = "";
     }
 
     if (mounted) setState(() => loading = false);
-  }
-
-  @override
-  void dispose() {
-    _textRecognizer.close();
-    super.dispose();
   }
 
   Future<void> _reTranslate() async {

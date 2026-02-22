@@ -5,6 +5,13 @@ from deep_translator import GoogleTranslator
 import os, docx, PyPDF2
 from functools import lru_cache
 
+# Try importing Google Cloud Vision (Install via: pip install google-cloud-vision)
+try:
+    from google.cloud import vision
+    VISION_API_AVAILABLE = True
+except ImportError:
+    VISION_API_AVAILABLE = False
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
@@ -123,6 +130,23 @@ def file_translate():
                 page_text = page.extract_text()
                 if page_text:
                     text_content += page_text + "\n"
+
+        # IMAGE HANDLING (For languages not supported by ML Kit)
+        elif filename.endswith((".jpg", ".jpeg", ".png", ".webp")):
+            if not VISION_API_AVAILABLE:
+                print("Error: google-cloud-vision library not installed.")
+                return jsonify({"error": "Server OCR not configured. Install google-cloud-vision."}), 500
+            
+            try:
+                client = vision.ImageAnnotatorClient()
+                content = file.read()
+                image = vision.Image(content=content)
+                response = client.text_detection(image=image)
+                if response.text_annotations:
+                    text_content = response.text_annotations[0].description
+            except Exception as e:
+                print(f"Google Cloud Vision Error: {e}")
+                return jsonify({"error": f"Cloud OCR failed: {str(e)}"}), 500
 
         else:
             print(f"Error: Unsupported file type: {filename}")
