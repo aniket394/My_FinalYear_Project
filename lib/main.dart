@@ -796,20 +796,6 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
   String toLang = "hi";
   final picker = ImagePicker();
 
-  // Helper to check if ML Kit supports the language on-device
-  bool _isMlKitSupported(String code) {
-    const supported = [
-      // Latin (Auto removed to allow server-side detection or force user selection)
-      'en', 'fr', 'es', 'de', 'pt', 'it', 'nl', 'tr', 'vi', 'th', 'id', 'pl', 'uk', 'ro', 'el', 'cs', 'sv', 'hu', 'ms', 'tl', 'fi', 'da', 'no', 'sw', 'af', 'si', 'my', 'km', 'lo',
-      // Devanagari (Hindi, Marathi, etc.)
-      'hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx',
-      // Chinese, Japanese, Korean
-      'zh', 'ja', 'ko'
-    ];
-    // If code is NOT in this list (e.g., ta, te, bn, gu), return false
-    return supported.contains(code);
-  }
-
   Future<void> getImage(ImageSource source) async {
     try {
       final XFile? img = await picker.pickImage(
@@ -828,21 +814,6 @@ class _CameraScreenUIState extends State<CameraScreenUI> {
         extracted = "";
         translated = "";
       });
-
-      // 1. Check if we can use ML Kit (On-Device)
-      if (!_isMlKitSupported(fromLang)) {
-        // Fallback to Server-Side OCR for unsupported languages (Tamil, Telugu, etc.)
-        final response = await ApiService.translateFile(bytes, img.name, toLang);
-        
-        if (response.containsKey("error")) {
-          extracted = response["error"]!.toString();
-          translated = "";
-        } else {
-          extracted = (response["original_text"] ?? "No text extracted.").toString();
-          translated = (response["translated_text"] ?? "").toString();
-        }
-        return;
-      }
 
       // Perform OCR using Google ML Kit locally
       // Select script based on 'fromLang' or default to Latin
@@ -1118,19 +1089,6 @@ class _FilesScreenState extends State<FilesScreen> {
   String fromLang = "auto"; // Default to Auto
   String toLang = "hi";
 
-  // Helper to check if ML Kit supports the language on-device
-  bool _isMlKitSupported(String code) {
-    const supported = [
-      // Latin (Auto removed to allow server-side detection or force user selection)
-      'en', 'fr', 'es', 'de', 'pt', 'it', 'nl', 'tr', 'vi', 'th', 'id', 'pl', 'uk', 'ro', 'el', 'cs', 'sv', 'hu', 'ms', 'tl', 'fi', 'da', 'no', 'sw', 'af', 'si', 'my', 'km', 'lo',
-      // Devanagari
-      'hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx',
-      // CJK
-      'zh', 'ja', 'ko'
-    ];
-    return supported.contains(code);
-  }
-
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -1150,7 +1108,7 @@ class _FilesScreenState extends State<FilesScreen> {
       String ext = result.files.single.extension?.toLowerCase() ?? "";
       
       // If it's an image, use ML Kit locally
-      if (['jpg', 'jpeg', 'png', 'webp'].contains(ext) && result.files.single.path != null && _isMlKitSupported(fromLang)) {
+      if (['jpg', 'jpeg', 'png', 'webp'].contains(ext) && result.files.single.path != null) {
         // Select script based on 'fromLang'
         TextRecognitionScript script = TextRecognitionScript.latin;
         if (['hi', 'mr', 'ne', 'sa', 'bho', 'mai', 'gom', 'doi', 'brx'].contains(fromLang)) {
