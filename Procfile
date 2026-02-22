@@ -1,1 +1,1 @@
-web: gunicorn --chdir lib app:app
+web: gunicorn --bind 0.0.0.0:$PORT --chdir lib app:app
