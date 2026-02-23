@@ -238,8 +238,12 @@ class _TextTranslatorScreenState extends State<TextTranslatorScreen> {
     }
     FocusScope.of(context).unfocus();
     setState(() => loading = true);
-    final translation = await ApiService.translateText(_controller.text, toLang);
-    if (mounted) setState(() { output = translation; loading = false; });
+    try {
+      final translation = await ApiService.translateText(_controller.text, toLang);
+      if (mounted) setState(() { output = translation; loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { output = "Error: $e"; loading = false; });
+    }
   }
 
   void swapLanguages() {
@@ -586,8 +590,12 @@ class _SpeechScreenState extends State<SpeechScreen> {
         _debounce = Timer(const Duration(milliseconds: 500), () async {
           if (text.trim().isEmpty) return;
           if (mounted) setState(() => loading = true);
-          final tr = await ApiService.translateText(text, toLang);
-          if (mounted) setState(() { translated = tr; loading = false; });
+          try {
+            final tr = await ApiService.translateText(text, toLang);
+            if (mounted) setState(() { translated = tr; loading = false; });
+          } catch (e) {
+            if (mounted) setState(() { translated = "Error connecting to service"; loading = false; });
+          }
         });
       },
       localeId: fromLang == "auto" ? null : fromLang,
@@ -615,8 +623,12 @@ class _SpeechScreenState extends State<SpeechScreen> {
   Future<void> _reTranslate() async {
     if (text.trim().isEmpty) return;
     setState(() => loading = true);
-    final tr = await ApiService.translateText(text, toLang);
-    if (mounted) setState(() { translated = tr; loading = false; });
+    try {
+      final tr = await ApiService.translateText(text, toLang);
+      if (mounted) setState(() { translated = tr; loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { translated = "Error: $e"; loading = false; });
+    }
   }
 
   @override
@@ -884,8 +896,12 @@ class _FilesScreenState extends State<FilesScreen> {
   Future<void> _reTranslate() async {
     if (extracted.trim().isEmpty) return;
     setState(() => loading = true);
-    final tr = await ApiService.translateText(extracted, toLang);
-    if (mounted) setState(() { translated = tr; loading = false; });
+    try {
+      final tr = await ApiService.translateText(extracted, toLang);
+      if (mounted) setState(() { translated = tr; loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { translated = "Error: $e"; loading = false; });
+    }
   }
 
   Widget cardText(String title, String text) => Container(
