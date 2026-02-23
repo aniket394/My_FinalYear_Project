@@ -228,7 +228,7 @@ class _TextTranslatorScreenState extends State<TextTranslatorScreen> {
   bool loading = false;
   final FlutterTts flutterTts = FlutterTts();
 
-  String fromLang = "en";
+  String fromLang = "auto";
   String toLang = "hi";
 
   Future<void> translate() async {
@@ -662,7 +662,9 @@ class _SpeechScreenState extends State<SpeechScreen> {
                     menuMaxHeight: 300,
                     value: fromLang,
                     icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kTextSecondary),
-                    items: kLanguages.entries.map((e) => DropdownMenuItem(
+                    items: kLanguages.entries
+                        .where((e) => e.value["code"] != "auto")
+                        .map((e) => DropdownMenuItem(
                           value: e.value["code"],
                           child: Text("${e.value["flag"]} ${e.key}", overflow: TextOverflow.ellipsis, style: const TextStyle(color: kTextPrimary)),
                         )).toList(),

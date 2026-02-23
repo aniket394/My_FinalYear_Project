@@ -6,8 +6,6 @@ class ApiService {
   // ===========================================================================
   // 🔧 CONFIGURATION: SET YOUR SERVER URL HERE
   // ===========================================================================
-  // Replace "https://your-app-name.onrender.com" with your actual Render URL.
-  // Example: "https://translango-backend.onrender.com"
   static const String _baseUrl = "https://my-finalyear-project.onrender.com"; 
 
   static Future<String> translateText(String text, String targetLang) async {
