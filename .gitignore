@@ -1,8 +1,6 @@
 # Miscellaneous
 *.class
 *.log
-tessdata/
-__pycache__/
 *.pyc
 *.swp
 .DS_Store
@@ -16,6 +14,9 @@ __pycache__/
 *.ipr
 *.iws
 .idea/
+
+# The .vscode folder contains launch configuration and tasks.
+.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -31,20 +32,25 @@ __pycache__/
 # Web related
 lib/generated_plugin_registrant.dart
 
-# Android
-/android/local.properties
-/android/key.properties
+# Android related
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
 
-# iOS
-/ios/Flutter/Generated.xcconfig
-/ios/Flutter/flutter_export_environment.sh
-/ios/Pods/
-/ios/Podfile.lock
+# iOS/XCode related
+**/ios/**/DerivedData/
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Runner/GeneratedPluginRegistrant.*
 
-# Python
+# Python (for app.py)
 __pycache__/
-*.py[cod]
 venv/
-env/
 .env
-.DS_Store
