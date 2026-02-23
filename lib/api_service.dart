@@ -1,11 +1,14 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Android Emulator uses 10.0.2.2 to access localhost
-  // For iOS Simulator or Web, use 127.0.0.1
-  // For a real device, use your PC's local IP address (e.g., 192.168.1.5)
-  static const String _baseUrl = "http://10.0.2.2:5000"; 
+  // ===========================================================================
+  // 🔧 CONFIGURATION: SET YOUR SERVER URL HERE
+  // ===========================================================================
+  // Replace "https://your-app-name.onrender.com" with your actual Render URL.
+  // Example: "https://translango-backend.onrender.com"
+  static const String _baseUrl = "https://my-finalyear-project.onrender.com"; 
 
   static Future<String> translateText(String text, String targetLang) async {
     try {
@@ -16,7 +19,7 @@ class ApiService {
           "text": text,
           "target_lang": targetLang,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 30)); // Increased timeout for Render cold starts
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -25,7 +28,8 @@ class ApiService {
         return "Error: Server returned ${response.statusCode}";
       }
     } catch (e) {
-      return "Backend unavailable (Testing Mode): $text";
+      debugPrint("Backend Connection Error: $e");
+      return "Backend unavailable. Is the server running at $_baseUrl?";
     }
   }
 }
